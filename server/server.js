@@ -13,15 +13,17 @@ app.use(cors({
 app.use(express.json());
 
 // MongoDB Connection with environment variable
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://timetrackingApp:Super@1234#@cluster0.tvcloza.mongodb.net/timetracking';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://timetrackingApp:Super%401234%23@cluster0.tvcloza.mongodb.net/timetracking';
 
-mongoose.connect(MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-}).then(() => {
+console.log('Attempting to connect to MongoDB...');
+console.log('Database:', MONGODB_URI.split('@')[1]?.split('/')[0]);
+
+mongoose.connect(MONGODB_URI).then(() => {
   console.log('✓ MongoDB Connected Successfully');
 }).catch(err => {
   console.error('✗ MongoDB Connection Failed:', err.message);
+  console.error('Connection String:', MONGODB_URI.substring(0, 40) + '...');
+  console.error('Full Error:', err);
   process.exit(1);
 });
 
