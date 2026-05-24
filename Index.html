@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TimeFlow — Task & Time Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0e14;
+    --bg2: #13141d;
+    --bg3: #1a1c28;
+    --bg4: #222436;
+    --border: #2a2d42;
+    --border2: #353858;
+    --text: #e8eaf0;
+    --text2: #9da3c0;
+    --text3: #5c6280;
+    --accent: #7c6af7;
+    --accent2: #9d8ff9;
+    --accent-bg: rgba(124,106,247,0.12);
+    --accent-border: rgba(124,106,247,0.3);
+    --green: #3dd68c;
+    --green-bg: rgba(61,214,140,0.1);
+    --amber: #f5a623;
+    --amber-bg: rgba(245,166,35,0.1);
+    --red: #f04f5a;
+    --red-bg: rgba(240,79,90,0.1);
+    --blue: #4fa3f5;
+    --blue-bg: rgba(79,163,245,0.1);
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; overflow-x: hidden; }
+  .mono { font-family: 'DM Mono', monospace; }
+  h1,h2,h3,h4 { font-family: 'Syne', sans-serif; }
+
+  /* VIEWS */
+  .view { display: none; min-height: 100vh; }
+  .view.active { display: flex; }
+
+  /* LOGIN */
+  #v-login { align-items: center; justify-content: center; background: var(--bg); position: relative; overflow: hidden; }
+  #v-login::before {
+    content:''; position:absolute; width:600px; height:600px; border-radius:50%;
+    background: radial-gradient(circle, rgba(124,106,247,0.15) 0%, transparent 70%);
+    top: -200px; right: -150px; pointer-events:none;
+  }
+  #v-login::after {
+    content:''; position:absolute; width:400px; height:400px; border-radius:50%;
+    background: radial-gradient(circle, rgba(61,214,140,0.08) 0%, transparent 70%);
+    bottom: -100px; left: -100px; pointer-events:none;
+  }
+  .login-box {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg);
+    padding: 48px 44px; width: 420px; position: relative; z-index:1;
+    box-shadow: var(--shadow);
+  }
+  .login-logo { font-family:'Syne',sans-serif; font-size:22px; font-weight:800; color:var(--accent); margin-bottom:8px; letter-spacing:-0.5px; }
+  .login-logo span { color: var(--green); }
+  .login-sub { color:var(--text2); margin-bottom:36px; font-size:13px; }
+  .field-label { font-size:12px; font-weight:500; color:var(--text2); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.05em; }
+  .field { margin-bottom:20px; }
+  .field input {
+    width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius);
+    padding:12px 14px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px;
+    outline:none; transition: border-color 0.2s;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .btn { cursor:pointer; border:none; border-radius:var(--radius); font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500; transition: all 0.2s; }
+  .btn-primary { background:var(--accent); color:#fff; padding:12px 24px; width:100%; }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-sm { padding:6px 14px; font-size:13px; }
+  .btn-ghost { background:transparent; border:1px solid var(--border2); color:var(--text2); }
+  .btn-ghost:hover { border-color:var(--accent); color:var(--accent); }
+  .btn-danger { background:var(--red-bg); border:1px solid rgba(240,79,90,0.3); color:var(--red); }
+  .btn-danger:hover { background:var(--red); color:#fff; }
+  .btn-success { background:var(--green-bg); border:1px solid rgba(61,214,140,0.3); color:var(--green); }
+  .btn-success:hover { background:var(--green); color:#0d0e14; }
+  .login-roles { display:flex; gap:8px; margin-bottom:28px; }
+  .role-pill {
+    flex:1; padding:8px 12px; border-radius:var(--radius); border:1px solid var(--border);
+    background:var(--bg3); color:var(--text2); text-align:center; cursor:pointer;
+    font-size:13px; transition: all 0.2s;
+  }
+  .role-pill.active { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
+  .err-msg { background:var(--red-bg); border:1px solid rgba(240,79,90,0.3); color:var(--red); border-radius:var(--radius); padding:10px 14px; font-size:13px; margin-bottom:16px; display:none; }
+
+  /* APP LAYOUT */
+  #v-app { flex-direction: column; }
+  .topbar {
+    height:56px; background:var(--bg2); border-bottom:1px solid var(--border);
+    display:flex; align-items:center; padding:0 24px; gap:16px; position:sticky; top:0; z-index:100;
+  }
+  .topbar-logo { font-family:'Syne',sans-serif; font-size:16px; font-weight:800; color:var(--accent); margin-right:8px; }
+  .topbar-logo span { color:var(--green); }
+  .topbar-nav { display:flex; gap:4px; flex:1; }
+  .nav-btn {
+    background:transparent; border:none; color:var(--text2); padding:6px 14px; border-radius:8px;
+    font-size:13px; font-weight:500; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s;
+  }
+  .nav-btn:hover { background:var(--bg3); color:var(--text); }
+  .nav-btn.active { background:var(--accent-bg); color:var(--accent); }
+  .topbar-right { display:flex; align-items:center; gap:12px; margin-left:auto; }
+  .avatar { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; font-family:'Syne',sans-serif; }
+
+  /* PAGES */
+  .page { display:none; padding:28px 28px; flex:1; overflow-y:auto; max-height: calc(100vh - 56px); }
+  .page.active { display:block; }
+  .page-title { font-size:20px; font-weight:700; color:var(--text); margin-bottom:4px; }
+  .page-sub { color:var(--text3); font-size:13px; margin-bottom:24px; }
+
+  /* STAT CARDS */
+  .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:28px; }
+  .stat-card {
+    background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px 20px;
+  }
+  .stat-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:12px; font-size:18px; }
+  .stat-val { font-family:'Syne',sans-serif; font-size:24px; font-weight:700; line-height:1; margin-bottom:4px; }
+  .stat-lbl { font-size:12px; color:var(--text3); }
+
+  /* TABLES */
+  .table-wrap { background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; }
+  .table-header { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--border); }
+  .table-title { font-size:14px; font-weight:600; color:var(--text); }
+  table { width:100%; border-collapse:collapse; }
+  th { background:var(--bg3); padding:10px 16px; text-align:left; font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.05em; }
+  td { padding:12px 16px; border-top:1px solid var(--border); font-size:13px; color:var(--text2); }
+  tr:hover td { background:rgba(255,255,255,0.02); }
+
+  /* BADGES */
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge-todo { background:var(--bg4); color:var(--text3); border:1px solid var(--border2); }
+  .badge-progress { background:var(--amber-bg); color:var(--amber); border:1px solid rgba(245,166,35,0.25); }
+  .badge-done { background:var(--green-bg); color:var(--green); border:1px solid rgba(61,214,140,0.25); }
+  .badge-paused { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(79,163,245,0.25); }
+  .badge-admin { background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-border); }
+  .badge-user { background:var(--bg4); color:var(--text2); border:1px solid var(--border2); }
+
+  /* TASK CARD */
+  .task-card {
+    background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg);
+    padding:18px 20px; margin-bottom:12px; display:flex; align-items:center; gap:16px;
+    transition:border-color 0.2s;
+  }
+  .task-card:hover { border-color:var(--border2); }
+  .task-card.in-progress { border-left:3px solid var(--amber); }
+  .task-card.done { border-left:3px solid var(--green); opacity:0.7; }
+  .task-card.paused { border-left:3px solid var(--blue); }
+  .task-info { flex:1; }
+  .task-name { font-size:14px; font-weight:500; color:var(--text); margin-bottom:4px; }
+  .task-desc { font-size:12px; color:var(--text3); margin-bottom:8px; }
+  .task-meta { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .task-time { font-family:'DM Mono',monospace; font-size:18px; font-weight:500; color:var(--text); min-width:80px; }
+  .task-actions { display:flex; gap:8px; }
+
+  /* TIMER */
+  .timer-display { font-family:'DM Mono',monospace; font-size:13px; color:var(--amber); }
+
+  /* MODAL */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000;
+    display:none; align-items:center; justify-content:center;
+  }
+  .modal-overlay.open { display:flex; }
+  .modal {
+    background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius-lg);
+    padding:28px; width:480px; max-width:90vw; box-shadow:var(--shadow);
+  }
+  .modal-title { font-size:16px; font-weight:700; margin-bottom:20px; }
+  .modal-footer { display:flex; gap:8px; justify-content:flex-end; margin-top:24px; }
+  .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  select {
+    width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius);
+    padding:10px 14px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; outline:none;
+  }
+  select:focus { border-color:var(--accent); }
+  textarea {
+    width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:var(--radius);
+    padding:10px 14px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:14px; outline:none; resize:vertical;
+  }
+  textarea:focus { border-color:var(--accent); }
+
+  /* PROGRESS BAR */
+  .progress-bar { height:4px; background:var(--bg4); border-radius:2px; overflow:hidden; }
+  .progress-fill { height:100%; border-radius:2px; transition:width 0.4s ease; }
+
+  /* PRIORITY */
+  .pri-high { color:var(--red); }
+  .pri-med { color:var(--amber); }
+  .pri-low { color:var(--green); }
+
+  /* ADMIN NAV */
+  .admin-tabs { display:flex; gap:4px; margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:0; }
+  .admin-tab {
+    padding:8px 18px; border-radius:8px 8px 0 0; cursor:pointer; font-size:13px; font-weight:500;
+    color:var(--text3); background:transparent; border:none; font-family:'DM Sans',sans-serif; transition:all 0.2s;
+    border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .admin-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .admin-tab:hover { color:var(--text); }
+
+  /* GRID UTILS */
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  .mb-4 { margin-bottom:4px; }
+  .mb-8 { margin-bottom:8px; }
+  .mb-16 { margin-bottom:16px; }
+  .mb-24 { margin-bottom:24px; }
+  .flex { display:flex; }
+  .flex-center { display:flex; align-items:center; }
+  .gap-8 { gap:8px; }
+  .gap-12 { gap:12px; }
+  .ml-auto { margin-left:auto; }
+  .text-sm { font-size:12px; }
+  .text-muted { color:var(--text3); }
+  .text-accent { color:var(--accent); }
+  .text-green { color:var(--green); }
+  .text-amber { color:var(--amber); }
+
+  /* TIME LOG */
+  .time-log-entry {
+    display:flex; align-items:center; gap:12px; padding:10px 14px; border-radius:var(--radius);
+    background:var(--bg3); margin-bottom:8px;
+  }
+  .log-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+  /* NOTIFICATION */
+  .toast {
+    position:fixed; bottom:24px; right:24px; background:var(--bg2); border:1px solid var(--border2);
+    border-radius:var(--radius); padding:12px 18px; font-size:13px; z-index:9999; display:none;
+    align-items:center; gap:10px; box-shadow:var(--shadow); max-width:320px;
+  }
+  .toast.show { display:flex; }
+  .toast.toast-success { border-color:rgba(61,214,140,0.3); }
+  .toast.toast-error { border-color:rgba(240,79,90,0.3); }
+
+  /* Empty state */
+  .empty { text-align:center; padding:48px 24px; color:var(--text3); }
+  .empty-icon { font-size:40px; margin-bottom:12px; opacity:0.3; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background:var(--text3); }
+
+  .chip { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-family:'DM Mono',monospace; background:var(--bg4); color:var(--text2); }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .pulse { animation: pulse 1.5s ease-in-out infinite; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ LOGIN VIEW ═══════════════════════ -->
+<div class="view active" id="v-login">
+  <div class="login-box">
+    <div class="login-logo">Time<span>Flow</span></div>
+    <div class="login-sub">Track time. Ship work. Stay accountable.</div>
+    <div class="field-label" style="margin-bottom:8px;">Sign in as</div>
+    <div class="login-roles">
+      <div class="role-pill active" onclick="selectRole('user')" id="rp-user">👤 User</div>
+      <div class="role-pill" onclick="selectRole('admin')" id="rp-admin">🛡 Admin</div>
+    </div>
+    <div class="err-msg" id="login-err">Invalid credentials. Please try again.</div>
+    <div class="field">
+      <div class="field-label">Email</div>
+      <input type="email" id="login-email" placeholder="you@company.com" value="alice@company.com">
+    </div>
+    <div class="field">
+      <div class="field-label">Password</div>
+      <input type="password" id="login-pass" placeholder="••••••••" value="password">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Sign in →</button>
+    <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; color:var(--text3); line-height:1.8;">
+      <strong style="color:var(--text2);">Demo credentials:</strong><br>
+      Admin: admin@company.com / admin<br>
+      User: alice@company.com / password<br>
+      User: bob@company.com / password<br>
+      User: carol@company.com / password
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MAIN APP VIEW ═══════════════════════ -->
+<div class="view" id="v-app">
+  <!-- Top Bar -->
+  <div class="topbar">
+    <div class="topbar-logo">Time<span>Flow</span></div>
+    <div class="topbar-nav" id="top-nav"></div>
+    <div class="topbar-right">
+      <div style="font-size:12px; color:var(--text2);" id="topbar-username"></div>
+      <div class="avatar" id="topbar-avatar"></div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- USER PAGES -->
+  <div class="page active" id="p-dashboard">
+    <div class="page-title" id="dash-greeting">Good morning</div>
+    <div class="page-sub">Here's your task overview for today.</div>
+    <div class="stats-grid" id="dash-stats"></div>
+    <div class="grid-2">
+      <div>
+        <div class="flex-center gap-8 mb-16">
+          <div class="table-title">My Active Tasks</div>
+        </div>
+        <div id="user-active-tasks"></div>
+      </div>
+      <div>
+        <div class="table-title mb-16">Time Log Today</div>
+        <div id="time-log-today"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="p-mytasks">
+    <div class="flex-center mb-4">
+      <div>
+        <div class="page-title">My Tasks</div>
+        <div class="page-sub">All tasks assigned to you</div>
+      </div>
+      <div class="ml-auto flex gap-8">
+        <select id="filter-status" style="width:140px;" onchange="renderMyTasks()">
+          <option value="">All Status</option>
+          <option value="todo">To Do</option>
+          <option value="in-progress">In Progress</option>
+          <option value="paused">Paused</option>
+          <option value="done">Done</option>
+        </select>
+        <select id="filter-priority" style="width:140px;" onchange="renderMyTasks()">
+          <option value="">All Priority</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+    </div>
+    <div id="my-tasks-list"></div>
+  </div>
+
+  <div class="page" id="p-timelog">
+    <div class="page-title">Time Log</div>
+    <div class="page-sub">Full history of your tracked time</div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <div class="table-title">All Sessions</div>
+        <div class="text-sm text-muted mono" id="total-logged"></div>
+      </div>
+      <table>
+        <thead><tr><th>Task</th><th>Date</th><th>Duration</th><th>Status</th></tr></thead>
+        <tbody id="timelog-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ADMIN PAGES -->
+  <div class="page" id="p-admin-dash">
+    <div class="page-title">Admin Dashboard</div>
+    <div class="page-sub">Overview of all users and tasks</div>
+    <div class="stats-grid" id="admin-stats"></div>
+    <div class="grid-2">
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">Recent Activity</div></div>
+        <table>
+          <thead><tr><th>User</th><th>Task</th><th>Action</th><th>Time</th></tr></thead>
+          <tbody id="admin-activity"></tbody>
+        </table>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">Tasks by Status</div></div>
+        <div style="padding:20px;" id="admin-status-chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="p-admin-tasks">
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchAdminTab('tasks', this)">All Tasks</button>
+      <button class="admin-tab" onclick="switchAdminTab('users', this)">Users</button>
+    </div>
+
+    <!-- Tasks sub-panel -->
+    <div id="admin-tab-tasks">
+      <div class="flex-center mb-16">
+        <div class="table-title">Task Management</div>
+        <button class="btn btn-primary btn-sm ml-auto" onclick="openTaskModal()">+ New Task</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Task</th><th>Assigned To</th><th>Priority</th><th>Status</th><th>Time Spent</th><th>Actions</th></tr></thead>
+          <tbody id="admin-tasks-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Users sub-panel -->
+    <div id="admin-tab-users" style="display:none;">
+      <div class="flex-center mb-16">
+        <div class="table-title">User Management</div>
+        <button class="btn btn-primary btn-sm ml-auto" onclick="openUserModal()">+ New User</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>User</th><th>Email</th><th>Role</th><th>Tasks</th><th>Total Time</th><th>Actions</th></tr></thead>
+          <tbody id="admin-users-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="p-admin-reports">
+    <div class="page-title">Reports</div>
+    <div class="page-sub">Time tracking analytics across all users</div>
+    <div id="admin-reports-content"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ MODALS ═══════════════════════ -->
+<!-- Task Modal -->
+<div class="modal-overlay" id="modal-task">
+  <div class="modal">
+    <div class="modal-title" id="task-modal-title">Create New Task</div>
+    <div class="field">
+      <div class="field-label">Task Name</div>
+      <input type="text" id="t-name" placeholder="e.g. Build login page">
+    </div>
+    <div class="field">
+      <div class="field-label">Description</div>
+      <textarea id="t-desc" rows="2" placeholder="What needs to be done?"></textarea>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <div class="field-label">Assign To</div>
+        <select id="t-assign"></select>
+      </div>
+      <div class="field">
+        <div class="field-label">Priority</div>
+        <select id="t-priority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <div class="field-label">Due Date</div>
+        <input type="date" id="t-due">
+      </div>
+      <div class="field">
+        <div class="field-label">Estimated Hours</div>
+        <input type="number" id="t-est" placeholder="e.g. 4" min="0" step="0.5">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-task')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveTask()">Save Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- User Modal -->
+<div class="modal-overlay" id="modal-user">
+  <div class="modal">
+    <div class="modal-title" id="user-modal-title">Add New User</div>
+    <div class="form-row">
+      <div class="field">
+        <div class="field-label">Full Name</div>
+        <input type="text" id="u-name" placeholder="John Doe">
+      </div>
+      <div class="field">
+        <div class="field-label">Role</div>
+        <select id="u-role">
+          <option value="user">User</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <div class="field-label">Email</div>
+      <input type="email" id="u-email" placeholder="user@company.com">
+    </div>
+    <div class="field">
+      <div class="field-label">Password</div>
+      <input type="password" id="u-pass" placeholder="Set a password">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-user')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveUser()">Add User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manual Time Modal -->
+<div class="modal-overlay" id="modal-time">
+  <div class="modal" style="width:380px;">
+    <div class="modal-title">Log Manual Time</div>
+    <div class="field">
+      <div class="field-label">Hours</div>
+      <input type="number" id="mt-hours" min="0" max="24" placeholder="0" step="0.5">
+    </div>
+    <div class="field">
+      <div class="field-label">Minutes</div>
+      <input type="number" id="mt-mins" min="0" max="59" placeholder="0">
+    </div>
+    <div class="field">
+      <div class="field-label">Note (optional)</div>
+      <input type="text" id="mt-note" placeholder="What did you work on?">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-time')">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveManualTime()">Log Time</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toast-icon"></span>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+// ═══════════════════════ STATE ═══════════════════════
+let state = {
+  currentUser: null,
+  editingTaskId: null,
+  manualTimeTaskId: null,
+  activeTimers: {},   // taskId -> {startedAt, accumulated}
+  timerInterval: null,
+};
+
+let db = {
+  users: [
+    { id: 'u1', name: 'Alice Chen', email: 'alice@company.com', password: 'password', role: 'user', color: '#7c6af7' },
+    { id: 'u2', name: 'Bob Martinez', email: 'bob@company.com', password: 'password', role: 'user', color: '#3dd68c' },
+    { id: 'u3', name: 'Carol White', email: 'carol@company.com', password: 'password', role: 'user', color: '#f5a623' },
+    { id: 'adm', name: 'Admin User', email: 'admin@company.com', password: 'admin', role: 'admin', color: '#4fa3f5' },
+ { id: 'u4', name: 'Meenu Jha', email: 'Meenu@company.com', password: 'password', role: 'user', color: '#3dd68c' },
+
+  ],
+  tasks: [
+    { id: 't1', name: 'Design Login Screen', desc: 'Create Figma mockups for the new login flow', assignedTo: 'u1', priority: 'high', status: 'in-progress', due: '2025-06-01', estimatedHours: 4, timeSpent: 5400, logs: [{date:'2025-05-09',duration:3600,note:'Initial design'},{date:'2025-05-10',duration:1800,note:'Revisions'}] },
+    { id: 't2', name: 'API Integration', desc: 'Connect frontend with authentication API endpoints', assignedTo: 'u1', priority: 'high', status: 'todo', due: '2025-06-05', estimatedHours: 6, timeSpent: 0, logs: [] },
+    { id: 't3', name: 'Write Unit Tests', desc: 'Cover core business logic with Jest tests', assignedTo: 'u2', priority: 'medium', status: 'in-progress', due: '2025-06-03', estimatedHours: 5, timeSpent: 7200, logs: [{date:'2025-05-08',duration:3600,note:'Auth tests'},{date:'2025-05-10',duration:3600,note:'Payment tests'}] },
+    { id: 't4', name: 'Database Schema', desc: 'Design and migrate PostgreSQL schema', assignedTo: 'u2', priority: 'high', status: 'done', due: '2025-05-30', estimatedHours: 3, timeSpent: 10800, logs: [{date:'2025-05-07',duration:10800,note:'Full day work'}] },
+    { id: 't5', name: 'UI Component Library', desc: 'Build reusable React component library', assignedTo: 'u3', priority: 'medium', status: 'paused', due: '2025-06-10', estimatedHours: 8, timeSpent: 3600, logs: [{date:'2025-05-09',duration:3600,note:'Button components'}] },
+    { id: 't6', name: 'Performance Audit', desc: 'Run Lighthouse audit and optimize score', assignedTo: 'u3', priority: 'low', status: 'todo', due: '2025-06-15', estimatedHours: 2, timeSpent: 0, logs: [] },
+    { id: 't7', name: 'Deploy to Staging', desc: 'Configure CI/CD and deploy to AWS staging', assignedTo: 'u1', priority: 'medium', status: 'todo', due: '2025-06-08', estimatedHours: 3, timeSpent: 900, logs: [{date:'2025-05-10',duration:900,note:'Config setup'}] },
+  ],
+  activity: [
+    { userId: 'u1', taskId: 't1', action: 'started timer', time: '10:42 AM' },
+    { userId: 'u2', taskId: 't3', action: 'logged 1h', time: '9:15 AM' },
+    { userId: 'u3', taskId: 't5', action: 'paused task', time: '8:30 AM' },
+    { userId: 'u2', taskId: 't4', action: 'marked done', time: 'Yesterday' },
+  ],
+};
+
+// ═══════════════════════ UTILS ═══════════════════════
+function fmt(sec) {
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+function fmtShort(sec) {
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+  if(h>0) return `${h}h ${m>0?m+'m':''}`.trim();
+  return `${m}m`;
+}
+function initials(name) { return name.split(' ').map(n=>n[0]).join('').toUpperCase().slice(0,2); }
+function genId() { return 'id_' + Math.random().toString(36).slice(2,9); }
+function today() { return new Date().toISOString().split('T')[0]; }
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  const icon = type==='success' ? '✓' : type==='error' ? '✗' : 'ℹ';
+  el.className = `toast show toast-${type}`;
+  document.getElementById('toast-icon').style.color = type==='success'?'var(--green)':type==='error'?'var(--red)':'var(--amber)';
+  document.getElementById('toast-icon').textContent = icon;
+  document.getElementById('toast-msg').textContent = msg;
+  setTimeout(()=>el.classList.remove('show'), 3000);
+}
+function getUser(id) { return db.users.find(u=>u.id===id); }
+function getTask(id) { return db.tasks.find(t=>t.id===id); }
+function userTasks(uid) { return db.tasks.filter(t=>t.assignedTo===uid); }
+function liveTime(taskId) {
+  const timer = state.activeTimers[taskId];
+  if(!timer) return null;
+  return Math.floor((Date.now() - timer.startedAt)/1000) + (timer.accumulated||0);
+}
+function totalLive(taskId) {
+  const task = getTask(taskId);
+  const live = liveTime(taskId);
+  return task.timeSpent + (live||0);
+}
+function addActivity(userId, taskId, action) {
+  db.activity.unshift({ userId, taskId, action, time: 'Just now' });
+  if(db.activity.length > 20) db.activity.pop();
+}
+
+// ═══════════════════════ AUTH ═══════════════════════
+let selectedRole = 'user';
+function selectRole(r) {
+  selectedRole = r;
+  document.getElementById('rp-user').classList.toggle('active', r==='user');
+  document.getElementById('rp-admin').classList.toggle('active', r==='admin');
+  document.getElementById('login-email').value = r==='admin' ? 'admin@company.com' : 'alice@company.com';
+  document.getElementById('login-pass').value = r==='admin' ? 'admin' : 'password';
+}
+function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass = document.getElementById('login-pass').value.trim();
+  const user = db.users.find(u=>u.email===email && u.password===pass);
+  const errEl = document.getElementById('login-err');
+  if(!user) { errEl.style.display='block'; return; }
+  errEl.style.display='none';
+  state.currentUser = user;
+  switchView('v-app');
+  setupApp();
+}
+function doLogout() {
+  // stop all timers
+  Object.keys(state.activeTimers).forEach(tid => {
+    const task = getTask(tid);
+    if(task) {
+      const elapsed = Math.floor((Date.now()-state.activeTimers[tid].startedAt)/1000) + (state.activeTimers[tid].accumulated||0);
+      task.timeSpent += elapsed - (state.activeTimers[tid].accumulated||0);
+      task.status = 'paused';
+    }
+  });
+  state.activeTimers = {};
+  if(state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = null;
+  state.currentUser = null;
+  switchView('v-login');
+}
+function switchView(id) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ═══════════════════════ APP SETUP ═══════════════════════
+function setupApp() {
+  const u = state.currentUser;
+  const av = document.getElementById('topbar-avatar');
+  av.textContent = initials(u.name);
+  av.style.background = u.color + '33';
+  av.style.color = u.color;
+  av.style.fontFamily = 'Syne, sans-serif';
+  document.getElementById('topbar-username').textContent = u.name;
+
+  const nav = document.getElementById('top-nav');
+  if(u.role === 'admin') {
+    nav.innerHTML = `
+      <button class="nav-btn active" onclick="switchPage('admin-dash', this)">Dashboard</button>
+      <button class="nav-btn" onclick="switchPage('admin-tasks', this)">Tasks & Users</button>
+      <button class="nav-btn" onclick="switchPage('admin-reports', this)">Reports</button>
+    `;
+    switchPage('admin-dash', nav.querySelector('.nav-btn'));
+  } else {
+    nav.innerHTML = `
+      <button class="nav-btn active" onclick="switchPage('dashboard', this)">Dashboard</button>
+      <button class="nav-btn" onclick="switchPage('mytasks', this)">My Tasks</button>
+      <button class="nav-btn" onclick="switchPage('timelog', this)">Time Log</button>
+    `;
+    switchPage('dashboard', nav.querySelector('.nav-btn'));
+  }
+
+  // global timer tick
+  if(state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(tickTimers, 1000);
+}
+function switchPage(page, btn) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('p-'+page).classList.add('active');
+  if(btn) btn.classList.add('active');
+  renderPage(page);
+}
+function renderPage(p) {
+  if(p==='dashboard') renderDashboard();
+  else if(p==='mytasks') renderMyTasks();
+  else if(p==='timelog') renderTimelog();
+  else if(p==='admin-dash') renderAdminDash();
+  else if(p==='admin-tasks') { renderAdminTasks(); renderAdminUsers(); }
+  else if(p==='admin-reports') renderAdminReports();
+}
+
+// ═══════════════════════ TIMERS ═══════════════════════
+function startTimer(taskId) {
+  const task = getTask(taskId);
+  if(!task) return;
+  if(state.activeTimers[taskId]) return; // already running
+  state.activeTimers[taskId] = { startedAt: Date.now(), accumulated: 0 };
+  task.status = 'in-progress';
+  addActivity(state.currentUser.id, taskId, 'started timer');
+  toast('Timer started for "' + task.name + '"');
+  renderCurrentPage();
+}
+function pauseTimer(taskId) {
+  const task = getTask(taskId);
+  const timer = state.activeTimers[taskId];
+  if(!timer) return;
+  const elapsed = Math.floor((Date.now()-timer.startedAt)/1000);
+  task.timeSpent += elapsed;
+  task.logs.push({ date: today(), duration: elapsed, note: 'Timer session' });
+  delete state.activeTimers[taskId];
+  task.status = 'paused';
+  addActivity(state.currentUser.id, taskId, `logged ${fmtShort(elapsed)}`);
+  toast('Timer paused — ' + fmtShort(elapsed) + ' logged');
+  renderCurrentPage();
+}
+function markDone(taskId) {
+  const task = getTask(taskId);
+  if(state.activeTimers[taskId]) pauseTimer(taskId);
+  task.status = 'done';
+  addActivity(state.currentUser.id, taskId, 'marked done');
+  toast('Task marked as complete! 🎉');
+  renderCurrentPage();
+}
+function markTodo(taskId) {
+  const task = getTask(taskId);
+  task.status = 'todo';
+  renderCurrentPage();
+}
+function tickTimers() {
+  Object.keys(state.activeTimers).forEach(tid => {
+    const els = document.querySelectorAll(`[data-timer="${tid}"]`);
+    const live = liveTime(tid);
+    const task = getTask(tid);
+    const total = task.timeSpent + live;
+    els.forEach(el => el.textContent = fmt(total));
+  });
+}
+function renderCurrentPage() {
+  const active = document.querySelector('.page.active');
+  if(!active) return;
+  const id = active.id.replace('p-', '');
+  renderPage(id);
+}
+
+// ═══════════════════════ DASHBOARD ═══════════════════════
+function renderDashboard() {
+  const u = state.currentUser;
+  const tasks = userTasks(u.id);
+  const hour = new Date().getHours();
+  const greet = hour<12 ? 'Good morning' : hour<17 ? 'Good afternoon' : 'Good evening';
+  document.getElementById('dash-greeting').textContent = `${greet}, ${u.name.split(' ')[0]} 👋`;
+
+  const inProg = tasks.filter(t=>t.status==='in-progress').length;
+  const done = tasks.filter(t=>t.status==='done').length;
+  const total = tasks.length;
+  const totalSec = tasks.reduce((a,t)=>a+t.timeSpent,0);
+
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--accent-bg)">📋</div>
+      <div class="stat-val" style="color:var(--accent)">${total}</div>
+      <div class="stat-lbl">Total Tasks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--amber-bg)">⚡</div>
+      <div class="stat-val" style="color:var(--amber)">${inProg}</div>
+      <div class="stat-lbl">In Progress</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--green-bg)">✅</div>
+      <div class="stat-val" style="color:var(--green)">${done}</div>
+      <div class="stat-lbl">Completed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--blue-bg)">⏱</div>
+      <div class="stat-val" style="color:var(--blue)">${Math.floor(totalSec/3600)}h</div>
+      <div class="stat-lbl">Time Tracked</div>
+    </div>
+  `;
+
+  const activeTasks = tasks.filter(t=>t.status!=='done');
+  const activeEl = document.getElementById('user-active-tasks');
+  if(!activeTasks.length) {
+    activeEl.innerHTML = `<div class="empty"><div class="empty-icon">🎉</div><div>All tasks complete!</div></div>`;
+  } else {
+    activeEl.innerHTML = activeTasks.slice(0,4).map(t => renderMiniTaskCard(t)).join('');
+  }
+
+  // Today's log
+  const todayLogs = [];
+  tasks.forEach(t => {
+    t.logs.filter(l=>l.date===today()).forEach(l => todayLogs.push({task: t, log: l}));
+  });
+  const logEl = document.getElementById('time-log-today');
+  if(!todayLogs.length) {
+    logEl.innerHTML = `<div class="text-muted text-sm" style="padding:16px 0">No time logged today yet. Start a timer!</div>`;
+  } else {
+    logEl.innerHTML = todayLogs.map(({task,log}) => `
+      <div class="time-log-entry">
+        <div class="log-dot" style="background:${priorityColor(task.priority)}"></div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:500;color:var(--text)">${task.name}</div>
+          <div class="text-sm text-muted">${log.note}</div>
+        </div>
+        <div class="mono text-sm" style="color:var(--text2)">${fmtShort(log.duration)}</div>
+      </div>
+    `).join('');
+  }
+}
+function renderMiniTaskCard(t) {
+  const running = !!state.activeTimers[t.id];
+  const totalSec = t.timeSpent + (running ? liveTime(t.id) : 0);
+  return `
+    <div class="task-card ${t.status==='in-progress'?'in-progress':t.status==='paused'?'paused':''}">
+      <div class="task-info">
+        <div class="task-name">${t.name}</div>
+        <div class="task-meta">
+          ${statusBadge(t.status)}
+          <span class="chip pri-${t.priority}">${t.priority}</span>
+        </div>
+      </div>
+      <div class="task-time ${running?'pulse text-amber':''}" data-timer="${running?t.id:''}">${fmt(totalSec)}</div>
+      <div class="task-actions">
+        ${running
+          ? `<button class="btn btn-ghost btn-sm" onclick="pauseTimer('${t.id}')">⏸</button>`
+          : t.status!=='done'
+            ? `<button class="btn btn-success btn-sm" onclick="startTimer('${t.id}')">▶</button>`
+            : ''
+        }
+      </div>
+    </div>
+  `;
+}
+
+// ═══════════════════════ MY TASKS ═══════════════════════
+function renderMyTasks() {
+  const u = state.currentUser;
+  let tasks = userTasks(u.id);
+  const sf = document.getElementById('filter-status')?.value;
+  const pf = document.getElementById('filter-priority')?.value;
+  if(sf) tasks = tasks.filter(t=>t.status===sf);
+  if(pf) tasks = tasks.filter(t=>t.priority===pf);
+
+  const el = document.getElementById('my-tasks-list');
+  if(!tasks.length) { el.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div>No tasks found</div></div>`; return; }
+
+  el.innerHTML = tasks.map(t => {
+    const running = !!state.activeTimers[t.id];
+    const totalSec = t.timeSpent + (running ? liveTime(t.id) : 0);
+    const estSec = (t.estimatedHours||0)*3600;
+    const pct = estSec ? Math.min(100, Math.round(totalSec/estSec*100)) : 0;
+    return `
+    <div class="task-card ${t.status==='in-progress'?'in-progress':t.status==='done'?'done':t.status==='paused'?'paused':''}">
+      <div class="task-info">
+        <div class="task-name">${t.name}</div>
+        <div class="task-desc">${t.desc}</div>
+        <div class="task-meta" style="margin-bottom:8px">
+          ${statusBadge(t.status)}
+          <span class="chip pri-${t.priority}">${t.priority}</span>
+          ${t.due?`<span class="text-sm text-muted">Due: ${t.due}</span>`:''}
+          ${t.estimatedHours?`<span class="text-sm text-muted">Est: ${t.estimatedHours}h</span>`:''}
+        </div>
+        ${estSec?`<div class="progress-bar" style="width:200px"><div class="progress-fill" style="width:${pct}%;background:${pct>=100?'var(--green)':pct>60?'var(--amber)':'var(--accent)'}"></div></div>`:'' }
+      </div>
+      <div>
+        <div class="task-time ${running?'pulse':'text-muted'}" style="${running?'color:var(--amber)':''}" data-timer="${running?t.id:''}">${fmt(totalSec)}</div>
+        <div class="text-sm text-muted mono" style="margin-top:2px">${estSec?pct+'% of '+t.estimatedHours+'h':''}</div>
+      </div>
+      <div class="task-actions" style="flex-direction:column;gap:6px">
+        ${t.status==='done' ? `<button class="btn btn-ghost btn-sm" onclick="markTodo('${t.id}')">↩ Reopen</button>` : running
+          ? `<button class="btn btn-ghost btn-sm" onclick="pauseTimer('${t.id}')">⏸ Pause</button>
+             <button class="btn btn-success btn-sm" onclick="markDone('${t.id}')">✓ Done</button>`
+          : `<button class="btn btn-success btn-sm" onclick="startTimer('${t.id}')">▶ Start</button>
+             <button class="btn btn-ghost btn-sm" onclick="openManualTime('${t.id}')">+ Log</button>
+             ${t.status!=='done'?`<button class="btn btn-success btn-sm" onclick="markDone('${t.id}')">✓ Done</button>`:''}`
+        }
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════ TIME LOG ═══════════════════════
+function renderTimelog() {
+  const tasks = userTasks(state.currentUser.id);
+  const allLogs = [];
+  tasks.forEach(t => t.logs.forEach(l => allLogs.push({task:t, log:l})));
+  allLogs.sort((a,b)=>b.log.date.localeCompare(a.log.date));
+
+  const totalSec = allLogs.reduce((a,{log})=>a+log.duration,0);
+  document.getElementById('total-logged').textContent = 'Total: ' + fmtShort(totalSec);
+
+  const tbody = document.getElementById('timelog-body');
+  if(!allLogs.length) { tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:32px;color:var(--text3)">No time logged yet</td></tr>`; return; }
+  tbody.innerHTML = allLogs.map(({task,log})=>`
+    <tr>
+      <td><div style="font-weight:500;color:var(--text)">${task.name}</div><div class="text-sm text-muted">${log.note||'—'}</div></td>
+      <td>${log.date}</td>
+      <td><span class="mono">${fmtShort(log.duration)}</span></td>
+      <td>${statusBadge(task.status)}</td>
+    </tr>
+  `).join('');
+}
+
+// ═══════════════════════ ADMIN DASHBOARD ═══════════════════════
+function renderAdminDash() {
+  const users = db.users.filter(u=>u.role==='user');
+  const tasks = db.tasks;
+  const inProg = tasks.filter(t=>t.status==='in-progress').length;
+  const done = tasks.filter(t=>t.status==='done').length;
+  const totalSec = tasks.reduce((a,t)=>a+t.timeSpent,0);
+
+  document.getElementById('admin-stats').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--accent-bg)">👥</div>
+      <div class="stat-val" style="color:var(--accent)">${users.length}</div>
+      <div class="stat-lbl">Active Users</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--blue-bg)">📋</div>
+      <div class="stat-val" style="color:var(--blue)">${tasks.length}</div>
+      <div class="stat-lbl">Total Tasks</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--amber-bg)">⚡</div>
+      <div class="stat-val" style="color:var(--amber)">${inProg}</div>
+      <div class="stat-lbl">In Progress</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:var(--green-bg)">⏱</div>
+      <div class="stat-val" style="color:var(--green)">${Math.round(totalSec/3600)}h</div>
+      <div class="stat-lbl">Hours Tracked</div>
+    </div>
+  `;
+
+  // Activity
+  document.getElementById('admin-activity').innerHTML = db.activity.slice(0,8).map(a=>{
+    const u = getUser(a.userId), t = getTask(a.taskId);
+    return `<tr>
+      <td><span class="avatar" style="display:inline-flex;width:24px;height:24px;font-size:10px;background:${u?.color+'33'};color:${u?.color}">${initials(u?.name||'?')}</span> <span style="color:var(--text)">${u?.name||'?'}</span></td>
+      <td>${t?.name||'?'}</td>
+      <td>${a.action}</td>
+      <td class="text-muted">${a.time}</td>
+    </tr>`;
+  }).join('');
+
+  // Status chart
+  const statuses = ['todo','in-progress','paused','done'];
+  const labels = {'todo':'To Do','in-progress':'In Progress','paused':'Paused','done':'Done'};
+  const colors = {'todo':'var(--text3)','in-progress':'var(--amber)','paused':'var(--blue)','done':'var(--green)'};
+  const counts = Object.fromEntries(statuses.map(s=>[s,tasks.filter(t=>t.status===s).length]));
+  const max = Math.max(...Object.values(counts),1);
+  document.getElementById('admin-status-chart').innerHTML = statuses.map(s=>`
+    <div style="margin-bottom:14px">
+      <div class="flex-center gap-8 mb-4">
+        <div style="font-size:13px;color:var(--text2);width:90px">${labels[s]}</div>
+        <div style="flex:1;background:var(--bg4);border-radius:3px;height:8px;overflow:hidden">
+          <div style="height:100%;width:${Math.round(counts[s]/max*100)}%;background:${colors[s]};border-radius:3px;transition:width 0.6s"></div>
+        </div>
+        <div class="mono text-sm" style="color:${colors[s]};width:20px;text-align:right">${counts[s]}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════ ADMIN TASKS ═══════════════════════
+function switchAdminTab(tab, btn) {
+  document.querySelectorAll('.admin-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('admin-tab-tasks').style.display = tab==='tasks'?'block':'none';
+  document.getElementById('admin-tab-users').style.display = tab==='users'?'block':'none';
+}
+function renderAdminTasks() {
+  const tbody = document.getElementById('admin-tasks-body');
+  tbody.innerHTML = db.tasks.map(t=>{
+    const u = getUser(t.assignedTo);
+    return `<tr>
+      <td>
+        <div style="font-weight:500;color:var(--text)">${t.name}</div>
+        <div class="text-sm text-muted">${t.desc.slice(0,50)}${t.desc.length>50?'...':''}</div>
+      </td>
+      <td>
+        <div class="flex-center gap-8">
+          <div class="avatar" style="width:24px;height:24px;font-size:10px;background:${u?.color+'33'};color:${u?.color}">${initials(u?.name||'?')}</div>
+          ${u?.name||'Unassigned'}
+        </div>
+      </td>
+      <td><span class="pri-${t.priority}" style="font-size:12px;font-weight:600">${t.priority.toUpperCase()}</span></td>
+      <td>${statusBadge(t.status)}</td>
+      <td><span class="mono">${fmtShort(t.timeSpent)}</span></td>
+      <td>
+        <div class="flex gap-8">
+          <button class="btn btn-ghost btn-sm" onclick="openTaskModal('${t.id}')">Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Del</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+function renderAdminUsers() {
+  const tbody = document.getElementById('admin-users-body');
+  tbody.innerHTML = db.users.map(u=>{
+    const tasks = userTasks(u.id);
+    const totalSec = tasks.reduce((a,t)=>a+t.timeSpent,0);
+    return `<tr>
+      <td>
+        <div class="flex-center gap-8">
+          <div class="avatar" style="width:32px;height:32px;font-size:12px;background:${u.color+'33'};color:${u.color}">${initials(u.name)}</div>
+          <div>
+            <div style="font-weight:500;color:var(--text)">${u.name}</div>
+            <div class="text-sm text-muted">${u.id}</div>
+          </div>
+        </div>
+      </td>
+      <td>${u.email}</td>
+      <td>${u.role==='admin'?`<span class="badge badge-admin">Admin</span>`:`<span class="badge badge-user">User</span>`}</td>
+      <td>${tasks.length}</td>
+      <td><span class="mono">${fmtShort(totalSec)}</span></td>
+      <td>
+        <div class="flex gap-8">
+          <button class="btn btn-ghost btn-sm" onclick="openUserModal('${u.id}')">Edit</button>
+          ${u.id!=='adm'?`<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Del</button>`:''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════ ADMIN REPORTS ═══════════════════════
+function renderAdminReports() {
+  const users = db.users.filter(u=>u.role==='user');
+  const el = document.getElementById('admin-reports-content');
+  el.innerHTML = `
+    <div class="grid-2 mb-24">
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">Time by User</div></div>
+        <div style="padding:16px">
+          ${users.map(u=>{
+            const tasks = userTasks(u.id);
+            const sec = tasks.reduce((a,t)=>a+t.timeSpent,0);
+            const maxSec = Math.max(...users.map(uu=>userTasks(uu.id).reduce((a,t)=>a+t.timeSpent,0)),1);
+            return `<div style="margin-bottom:16px">
+              <div class="flex-center gap-8 mb-4">
+                <div class="avatar" style="width:24px;height:24px;font-size:10px;background:${u.color+'33'};color:${u.color}">${initials(u.name)}</div>
+                <div style="font-size:13px;color:var(--text2);flex:1">${u.name}</div>
+                <div class="mono text-sm" style="color:var(--text2)">${Math.floor(sec/3600)}h ${Math.floor((sec%3600)/60)}m</div>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${Math.round(sec/maxSec*100)}%;background:${u.color}"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><div class="table-title">Task Completion Rate</div></div>
+        <div style="padding:16px">
+          ${users.map(u=>{
+            const tasks = userTasks(u.id);
+            const done = tasks.filter(t=>t.status==='done').length;
+            const pct = tasks.length ? Math.round(done/tasks.length*100) : 0;
+            return `<div style="margin-bottom:16px">
+              <div class="flex-center gap-8 mb-4">
+                <div style="font-size:13px;color:var(--text2);flex:1">${u.name}</div>
+                <div class="mono text-sm" style="color:var(--green)">${pct}%</div>
+              </div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:var(--green)"></div></div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><div class="table-title">Task Details Report</div></div>
+      <table>
+        <thead><tr><th>Task</th><th>Assigned</th><th>Status</th><th>Priority</th><th>Estimated</th><th>Tracked</th><th>Variance</th></tr></thead>
+        <tbody>
+          ${db.tasks.map(t=>{
+            const u = getUser(t.assignedTo);
+            const est = (t.estimatedHours||0)*3600;
+            const diff = t.timeSpent - est;
+            return `<tr>
+              <td style="color:var(--text);font-weight:500">${t.name}</td>
+              <td>${u?.name||'—'}</td>
+              <td>${statusBadge(t.status)}</td>
+              <td><span class="pri-${t.priority}">${t.priority}</span></td>
+              <td class="mono">${t.estimatedHours?t.estimatedHours+'h':'—'}</td>
+              <td class="mono">${fmtShort(t.timeSpent)}</td>
+              <td class="mono" style="color:${diff>0?'var(--red)':diff<0?'var(--green)':'var(--text3)'}">
+                ${est?`${diff>0?'+':diff<0?'':'+'}${fmtShort(Math.abs(diff))}${diff===0?' on track':''}`:' — '}
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ═══════════════════════ TASK MODAL ═══════════════════════
+function openTaskModal(taskId) {
+  state.editingTaskId = taskId || null;
+  const task = taskId ? getTask(taskId) : null;
+  document.getElementById('task-modal-title').textContent = task ? 'Edit Task' : 'Create New Task';
+
+  const assignSel = document.getElementById('t-assign');
+  assignSel.innerHTML = db.users.filter(u=>u.role==='user').map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
+
+  if(task) {
+    document.getElementById('t-name').value = task.name;
+    document.getElementById('t-desc').value = task.desc;
+    document.getElementById('t-assign').value = task.assignedTo;
+    document.getElementById('t-priority').value = task.priority;
+    document.getElementById('t-due').value = task.due||'';
+    document.getElementById('t-est').value = task.estimatedHours||'';
+  } else {
+    document.getElementById('t-name').value = '';
+    document.getElementById('t-desc').value = '';
+    document.getElementById('t-priority').value = 'medium';
+    document.getElementById('t-due').value = '';
+    document.getElementById('t-est').value = '';
+  }
+  openModal('modal-task');
+}
+function saveTask() {
+  const name = document.getElementById('t-name').value.trim();
+  if(!name) { toast('Task name is required','error'); return; }
+  const data = {
+    name,
+    desc: document.getElementById('t-desc').value.trim(),
+    assignedTo: document.getElementById('t-assign').value,
+    priority: document.getElementById('t-priority').value,
+    due: document.getElementById('t-due').value,
+    estimatedHours: parseFloat(document.getElementById('t-est').value)||0,
+  };
+  if(state.editingTaskId) {
+    Object.assign(getTask(state.editingTaskId), data);
+    toast('Task updated successfully');
+  } else {
+    db.tasks.push({ id:genId(), status:'todo', timeSpent:0, logs:[], ...data });
+    toast('Task created and assigned!');
+  }
+  closeModal('modal-task');
+  renderAdminTasks();
+}
+function deleteTask(id) {
+  if(!confirm('Delete this task?')) return;
+  db.tasks = db.tasks.filter(t=>t.id!==id);
+  toast('Task deleted');
+  renderAdminTasks();
+}
+
+// ═══════════════════════ USER MODAL ═══════════════════════
+function openUserModal(userId) {
+  const user = userId ? getUser(userId) : null;
+  document.getElementById('user-modal-title').textContent = user ? 'Edit User' : 'Add New User';
+  state.editingUserId = userId||null;
+  if(user) {
+    document.getElementById('u-name').value = user.name;
+    document.getElementById('u-email').value = user.email;
+    document.getElementById('u-role').value = user.role;
+    document.getElementById('u-pass').value = '';
+  } else {
+    document.getElementById('u-name').value = '';
+    document.getElementById('u-email').value = '';
+    document.getElementById('u-role').value = 'user';
+    document.getElementById('u-pass').value = '';
+  }
+  openModal('modal-user');
+}
+function saveUser() {
+  const name = document.getElementById('u-name').value.trim();
+  const email = document.getElementById('u-email').value.trim();
+  if(!name||!email) { toast('Name and email required','error'); return; }
+  if(state.editingUserId) {
+    const u = getUser(state.editingUserId);
+    u.name = name; u.email = email; u.role = document.getElementById('u-role').value;
+    const p = document.getElementById('u-pass').value;
+    if(p) u.password = p;
+    toast('User updated');
+  } else {
+    const colors = ['#7c6af7','#3dd68c','#f5a623','#f04f5a','#4fa3f5','#e879f9'];
+    db.users.push({ id: genId(), name, email, password: document.getElementById('u-pass').value||'password', role: document.getElementById('u-role').value, color: colors[db.users.length%colors.length] });
+    toast('User added successfully');
+  }
+  closeModal('modal-user');
+  renderAdminUsers();
+}
+function deleteUser(id) {
+  if(!confirm('Delete this user? Their tasks will be unassigned.')) return;
+  db.tasks.forEach(t=>{ if(t.assignedTo===id) t.assignedTo=null; });
+  db.users = db.users.filter(u=>u.id!==id);
+  toast('User deleted');
+  renderAdminUsers();
+}
+
+// ═══════════════════════ MANUAL TIME ═══════════════════════
+function openManualTime(taskId) {
+  state.manualTimeTaskId = taskId;
+  document.getElementById('mt-hours').value = '';
+  document.getElementById('mt-mins').value = '';
+  document.getElementById('mt-note').value = '';
+  openModal('modal-time');
+}
+function saveManualTime() {
+  const h = parseFloat(document.getElementById('mt-hours').value)||0;
+  const m = parseFloat(document.getElementById('mt-mins').value)||0;
+  const sec = Math.round((h*3600)+(m*60));
+  if(sec<=0) { toast('Please enter a valid duration','error'); return; }
+  const task = getTask(state.manualTimeTaskId);
+  task.timeSpent += sec;
+  task.logs.push({ date: today(), duration: sec, note: document.getElementById('mt-note').value||'Manual entry' });
+  addActivity(state.currentUser.id, task.id, `manually logged ${fmtShort(sec)}`);
+  toast(`Logged ${fmtShort(sec)} for "${task.name}"`);
+  closeModal('modal-time');
+  renderCurrentPage();
+}
+
+// ═══════════════════════ MODAL HELPERS ═══════════════════════
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if(e.target===m) m.classList.remove('open'); });
+});
+
+// ═══════════════════════ BADGE HELPERS ═══════════════════════
+function statusBadge(s) {
+  const map = { 'todo':'badge-todo','in-progress':'badge-progress','done':'badge-done','paused':'badge-paused' };
+  const labels = { 'todo':'To Do','in-progress':'In Progress','done':'Done','paused':'Paused' };
+  const dots = { 'todo':'⬜','in-progress':'🟡','done':'🟢','paused':'🔵' };
+  return `<span class="badge ${map[s]||'badge-todo'}">${dots[s]||'⬜'} ${labels[s]||s}</span>`;
+}
+function priorityColor(p) {
+  return p==='high'?'var(--red)':p==='medium'?'var(--amber)':'var(--green)';
+}
+</script>
+</body>
+</html>
