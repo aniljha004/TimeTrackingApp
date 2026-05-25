@@ -70,6 +70,9 @@ app.post('/api/users', async (req, res) => {
     const newUser = await user.save();
     res.status(201).json(newUser);
   } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: 'A user with that email already exists.' });
+    }
     res.status(400).json({ message: error.message });
   }
 });
@@ -241,7 +244,7 @@ app.get('/api/users/:userId/stats', async (req, res) => {
 app.get('/', (req, res) => {
   res.sendFile(path.resolve(__dirname, '../index.html'));
 });
-app.get('/*', (req, res) => {
+app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ message: 'Not found' });
   res.sendFile(path.resolve(__dirname, '../index.html'));
 });
@@ -251,5 +254,5 @@ const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`✓ Server running on port ${PORT}`);
   console.log(`✓ MongoDB: Connected`);
-  console.log(`✓ API Base: https://timeflow-app-production.up.railway.app/api`);
+  console.log(`✓ API Base: https://timeflow-app-production.up.railway.app`);
 });

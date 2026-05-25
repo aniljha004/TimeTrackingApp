@@ -526,9 +526,12 @@
 </div>
 
 <script>
-// Set API_BASE to your real backend API
-
-//const API_BASE = 'http://localhost:3000/api';
+// API_BASE is deploy-safe by default.
+// Use the local backend during dev on port 5500, otherwise use the same origin.
+const API_BASE = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+  && window.location.port === '5500'
+  ? 'http://127.0.0.1:3000/api'
+  : '/api';
 
 // ═══════════════════════ STATE ═══════════════════════
 let state = {
@@ -1190,8 +1193,18 @@ function saveUser() {
         role: document.getElementById('u-role').value
       })
     })
-    .then(res => {
-      if (!res.ok) throw new Error('Failed to add user');
+    .then(async res => {
+      if (!res.ok) {
+        const text = await res.text();
+        let message = text;
+        try {
+          const data = JSON.parse(text);
+          message = data.message || text;
+        } catch {
+          // ignore parse failure
+        }
+        throw new Error(message || 'Failed to add user');
+      }
       return res.json();
     })
     .then(user => {
@@ -1200,7 +1213,7 @@ function saveUser() {
       renderAdminUsers();
     })
     .catch(err => {
-      toast('Failed to add user', 'error');
+      toast(err.message || 'Failed to add user', 'error');
       console.error(err);
     });
   }
