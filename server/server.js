@@ -6,10 +6,10 @@ require('dotenv').config();
 const app = express();
 
 // CORS Configuration for Railway
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://timeflow-app-production.up.railway.app',
-  credentials: true
-}));
+// app.use(cors({
+//   origin: process.env.FRONTEND_URL || 'https://timeflow-app-production.up.railway.app',
+//   credentials: true
+// }));
 app.use(express.json());
 
 // MongoDB Connection with environment variable
