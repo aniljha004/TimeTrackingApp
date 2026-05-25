@@ -237,12 +237,16 @@ app.get('/api/users/:userId/stats', async (req, res) => {
   }
 });
 
-// Serve index.html for all non-API routes (SPA fallback)
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.resolve(__dirname, '../Index.html'));
+// Serve index.html for root and all non-API routes (SPA fallback)
+app.get('/', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../index.html'));
+});
+app.get('/*', (req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ message: 'Not found' });
+  res.sendFile(path.resolve(__dirname, '../index.html'));
 });
 
-// ==================== START SERVER ====================
+// ==================== START SERVER ====
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => {
   console.log(`✓ Server running on port ${PORT}`);
