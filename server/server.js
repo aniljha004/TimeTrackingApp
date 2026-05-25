@@ -237,9 +237,9 @@ app.get('/api/users/:userId/stats', async (req, res) => {
   }
 });
 
-// Serve index.html for all non-API routes (SPA fallback)
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.resolve(__dirname, '../Index.html'));
+// SPA fallback: serve Index.html for any non-API route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'Index.html'));
 });
 
 // ==================== START SERVER ====================
@@ -249,3 +249,4 @@ app.listen(PORT, () => {
   console.log(`✓ MongoDB: Connected`);
   console.log(`✓ API Base: https://timeflow-app-production.up.railway.app/api`);
 });
+
