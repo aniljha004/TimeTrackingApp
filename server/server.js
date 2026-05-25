@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -12,6 +13,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '..')));
 
 // MongoDB Connection with environment variable
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://timetrackingApp:Super%401234%23@cluster0.tvcloza.mongodb.net/timetracking';
@@ -233,6 +235,11 @@ app.get('/api/users/:userId/stats', async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
+});
+
+// Serve index.html for all non-API routes (SPA fallback)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'Index.html'));
 });
 
 // ==================== START SERVER ====================
