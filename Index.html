@@ -527,7 +527,8 @@
 
 <script>
 // Set API_BASE to your real backend API
-const API_BASE = 'https://timeflow-app-production.up.railway.app/api';
+
+//const API_BASE = 'http://localhost:3000/api';
 
 // ═══════════════════════ STATE ═══════════════════════
 let state = {
@@ -540,9 +541,7 @@ let state = {
 
 let db = {
   users: [
-    { id: 'u1', name: 'Alice Chen', email: 'alice@company.com', password: 'password', role: 'user', color: '#7c6af7' },
-    { id: 'u2', name: 'Bob Martinez', email: 'bob@company.com', password: 'password', role: 'user', color: '#3dd68c' },
-    { id: 'u3', name: 'Carol White', email: 'carol@company.com', password: 'password', role: 'user', color: '#f5a623' },
+
     { id: 'adm', name: 'Admin User', email: 'admin@company.com', password: 'admin', role: 'admin', color: '#4fa3f5' },
  { id: 'u4', name: 'Meenu Jha', email: 'Meenu@company.com', password: 'password', role: 'user', color: '#3dd68c' },
 
