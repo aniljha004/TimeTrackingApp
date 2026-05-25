@@ -526,6 +526,9 @@
 </div>
 
 <script>
+// Set API_BASE to your real backend API
+const API_BASE = 'https://timeflow-app-production.up.railway.app/api';
+
 // ═══════════════════════ STATE ═══════════════════════
 let state = {
   currentUser: null,
@@ -984,7 +987,7 @@ function renderAdminTasks() {
           ${u?.name||'Unassigned'}
         </div>
       </td>
-      <td><span class="pri-${t.priority}" style="font-size:12px;font-weight:600">${t.priority.toUpperCase()}</span></td>
+      <td><span class="pri-${t.priority}">${t.priority.toUpperCase()}</span></td>
       <td>${statusBadge(t.status)}</td>
       <td><span class="mono">${fmtShort(t.timeSpent)}</span></td>
       <td>
@@ -1170,15 +1173,36 @@ function saveUser() {
   const email = document.getElementById('u-email').value.trim();
   if(!name||!email) { toast('Name and email required','error'); return; }
   if(state.editingUserId) {
+    // Optionally: implement user update with API here
     const u = getUser(state.editingUserId);
     u.name = name; u.email = email; u.role = document.getElementById('u-role').value;
     const p = document.getElementById('u-pass').value;
     if(p) u.password = p;
     toast('User updated');
   } else {
-    const colors = ['#7c6af7','#3dd68c','#f5a623','#f04f5a','#4fa3f5','#e879f9'];
-    db.users.push({ id: genId(), name, email, password: document.getElementById('u-pass').value||'password', role: document.getElementById('u-role').value, color: colors[db.users.length%colors.length] });
-    toast('User added successfully');
+    fetch(typeof API_BASE !== 'undefined' ? API_BASE + '/users' : '/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        email,
+        password: document.getElementById('u-pass').value || 'password',
+        role: document.getElementById('u-role').value
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error('Failed to add user');
+      return res.json();
+    })
+    .then(user => {
+      toast('User added successfully');
+      // Optionally: reload users from backend here
+      renderAdminUsers();
+    })
+    .catch(err => {
+      toast('Failed to add user', 'error');
+      console.error(err);
+    });
   }
   closeModal('modal-user');
   renderAdminUsers();
