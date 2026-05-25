@@ -238,7 +238,7 @@ app.get('/api/users/:userId/stats', async (req, res) => {
 });
 
 // Serve index.html for all non-API routes (SPA fallback)
-app.get('*', (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'Index.html'));
 });
 
