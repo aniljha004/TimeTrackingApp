@@ -526,12 +526,13 @@
 </div>
 
 <script>
-// API_BASE is deploy-safe by default.
-// Use the local backend during dev on port 5500, otherwise use the same origin.
+// API_BASE is deploy-safe for GitHub Pages + Railway backend.
+// When the frontend is on localhost:5500, use the local backend.
+// When the frontend is hosted separately (GitHub Pages), use the Railway backend URL.
 const API_BASE = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
   && window.location.port === '5500'
   ? 'http://127.0.0.1:3000/api'
-  : '/api';
+  : 'https://your-railway-app.up.railway.app/api';
 
 // ═══════════════════════ STATE ═══════════════════════
 let state = {
