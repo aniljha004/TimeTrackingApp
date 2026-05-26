@@ -197,11 +197,11 @@
   .admin-tabs { display:flex; gap:4px; margin-bottom:24px; border-bottom:1px solid var(--border); padding-bottom:0; }
   .admin-tab {
     padding:8px 18px; border-radius:8px 8px 0 0; cursor:pointer; font-size:13px; font-weight:500;
-    color:var(--text3); background:transparent; border:none; font-family:'DM Sans',sans-serif; transition:all 0.2s;
-    border-bottom:2px solid transparent; margin-bottom:-1px;
+    color:var(--text2); background:transparent; border:none; font-family:'DM Sans',sans-serif; transition:all 0.2s;
+    border-bottom:2px solid transparent; margin-bottom:-1px; pointer-events: auto;
   }
   .admin-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
-  .admin-tab:hover { color:var(--text); }
+  .admin-tab:hover { color:var(--text); background:rgba(255,255,255,0.05); }
 
   /* GRID UTILS */
   .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
@@ -276,13 +276,6 @@
       <input type="password" id="login-pass" placeholder="••••••••" value="password">
     </div>
     <button class="btn btn-primary" onclick="doLogin()">Sign in →</button>
-    <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; color:var(--text3); line-height:1.8;">
-      <strong style="color:var(--text2);">Demo credentials:</strong><br>
-      Admin: admin@company.com / admin<br>
-      User: alice@company.com / password<br>
-      User: bob@company.com / password<br>
-      User: carol@company.com / password
-    </div>
   </div>
 </div>
 
@@ -411,6 +404,7 @@
         </table>
       </div>
     </div>
+
   </div>
 
   <div class="page" id="p-admin-reports">
@@ -533,7 +527,13 @@
 //   && window.location.port === '5500'
 //   ? 'http://127.0.0.1:3000/api'
 //   : 'https://timeflow-app-production.up.railway.app/api';
-const API_BASE='https://timeflow-app-production.up.railway.app/api'
+const API_BASE='https://timeflow-app-production.up.railway.app'
+// const API_BASE = (
+//   window.location.hostname === '127.0.0.1' ||
+//   window.location.hostname === 'localhost' ||
+//   window.location.protocol === 'file:'
+// ) ? 'http://127.0.0.1:3000/api' : 'https://timeflow-app-production.up.railway.app/api';
+
 // ═══════════════════════ STATE ═══════════════════════
 let state = {
   currentUser: null,
@@ -544,13 +544,7 @@ let state = {
 };
 
 let db = {
-  users: [
-    { id: 'adm', name: 'Admin User', email: 'admin@company.com', password: 'admin', role: 'admin', color: '#4fa3f5' },
-    { id: 'u1', name: 'Alice Johnson', email: 'alice@company.com', password: 'password', role: 'user', color: '#3dd68c' },
-    { id: 'u2', name: 'Bob Martin', email: 'bob@company.com', password: 'password', role: 'user', color: '#f5a623' },
-    { id: 'u3', name: 'Carol Chen', email: 'carol@company.com', password: 'password', role: 'user', color: '#4fa3f5' },
-    { id: 'u4', name: 'Meenu Jha', email: 'Meenu@company.com', password: 'password', role: 'user', color: '#8a6af7' },
-  ],
+  users: [],
   tasks: [
     { id: 't1', name: 'Design Login Screen', desc: 'Create Figma mockups for the new login flow', assignedTo: 'u1', priority: 'high', status: 'in-progress', due: '2025-06-01', estimatedHours: 4, timeSpent: 5400, logs: [{date:'2025-05-09',duration:3600,note:'Initial design'},{date:'2025-05-10',duration:1800,note:'Revisions'}] },
     { id: 't2', name: 'API Integration', desc: 'Connect frontend with authentication API endpoints', assignedTo: 'u1', priority: 'high', status: 'todo', due: '2025-06-05', estimatedHours: 6, timeSpent: 0, logs: [] },
@@ -567,6 +561,18 @@ let db = {
     { userId: 'u2', taskId: 't4', action: 'marked done', time: 'Yesterday' },
   ],
 };
+
+async function loadUsers() {
+  try {
+    const res = await fetch(`${API_BASE}/users`);
+    if (!res.ok) throw new Error('Failed to load users');
+   db.users = (await res.json()).map(u => ({ ...u, id: u._id }));    return db.users;
+  } catch (error) {
+    console.error('loadUsers failed', error);
+    toast('Unable to load users from server', 'error');
+    return [];
+  }
+}
 
 // ═══════════════════════ UTILS ═══════════════════════
 function fmt(sec) {
@@ -617,16 +623,33 @@ function selectRole(r) {
   document.getElementById('login-email').value = r==='admin' ? 'admin@company.com' : 'alice@company.com';
   document.getElementById('login-pass').value = r==='admin' ? 'admin' : 'password';
 }
-function doLogin() {
+async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value.trim();
-  const user = db.users.find(u=>u.email===email && u.password===pass);
   const errEl = document.getElementById('login-err');
-  if(!user) { errEl.style.display='block'; return; }
-  errEl.style.display='none';
-  state.currentUser = user;
-  switchView('v-app');
-  setupApp();
+  errEl.style.display = 'none';
+  try {
+    const res = await fetch(`${API_BASE}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) {
+      errEl.textContent = data?.message || 'Invalid credentials. Please try again.';
+      errEl.style.display = 'block';
+      return;
+    }
+    state.currentUser = data;
+    await loadUsers();
+    errEl.style.display = 'none';
+    switchView('v-app');
+    setupApp();
+  } catch (error) {
+    console.error(error);
+    errEl.textContent = 'Login failed. Please try again.';
+    errEl.style.display = 'block';
+  }
 }
 function doLogout() {
   // stop all timers
@@ -652,10 +675,11 @@ function switchView(id) {
 // ═══════════════════════ APP SETUP ═══════════════════════
 function setupApp() {
   const u = state.currentUser;
+  const color = u.color || '#4fa3f5';
   const av = document.getElementById('topbar-avatar');
   av.textContent = initials(u.name);
-  av.style.background = u.color + '33';
-  av.style.color = u.color;
+  av.style.background = color + '33';
+  av.style.color = color;
   av.style.fontFamily = 'Syne, sans-serif';
   document.getElementById('topbar-username').textContent = u.name;
 
@@ -1005,32 +1029,9 @@ function renderAdminTasks() {
 }
 function renderAdminUsers() {
   const tbody = document.getElementById('admin-users-body');
-  tbody.innerHTML = db.users.map(u=>{
-    const tasks = userTasks(u.id);
-    const totalSec = tasks.reduce((a,t)=>a+t.timeSpent,0);
-    return `<tr>
-      <td>
-        <div class="flex-center gap-8">
-          <div class="avatar" style="width:32px;height:32px;font-size:12px;background:${u.color+'33'};color:${u.color}">${initials(u.name)}</div>
-          <div>
-            <div style="font-weight:500;color:var(--text)">${u.name}</div>
-            <div class="text-sm text-muted">${u.id}</div>
-          </div>
-        </div>
-      </td>
-      <td>${u.email}</td>
-      <td>${u.role==='admin'?`<span class="badge badge-admin">Admin</span>`:`<span class="badge badge-user">User</span>`}</td>
-      <td>${tasks.length}</td>
-      <td><span class="mono">${fmtShort(totalSec)}</span></td>
-      <td>
-        <div class="flex gap-8">
-          <button class="btn btn-ghost btn-sm" onclick="openUserModal('${u.id}')">Edit</button>
-          ${u.id!=='adm'?`<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Del</button>`:''}
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
+  tbody.innerHTML = db.users.map(u=>{ const tasks = userTasks(u.id); const totalSec = tasks.reduce((a,t)=>a+t.timeSpent,0); return `<tr><td><div class="flex-center gap-8"><div class="avatar" style="width:32px;height:32px;font-size:12px;background:${u.color+'33'};color:${u.color}">${initials(u.name)}</div><div><div style="font-weight:500;color:var(--text)">${u.name}</div><div class="text-sm text-muted">${u.id}</div></div></div></td><td>${u.email}</td><td>${u.role==='admin'?`<span class="badge badge-admin">Admin</span>`:`<span class="badge badge-user">User</span>`}</td><td>${tasks.length}</td><td><span class="mono">${fmtShort(totalSec)}</span></td><td><div class="flex gap-8"><button class="btn btn-ghost btn-sm" onclick="openUserModal('${u.id}')">Edit</button>${u.id!=='adm'?`<button class="btn btn-danger btn-sm" onclick="deleteUser('${u.id}')">Del</button>`:''}</div></td></tr>`; }).join('');
 }
+
 
 // ═══════════════════════ ADMIN REPORTS ═══════════════════════
 function renderAdminReports() {
@@ -1153,13 +1154,11 @@ function deleteTask(id) {
   toast('Task deleted');
   renderAdminTasks();
 }
-
-// ═══════════════════════ USER MODAL ═══════════════════════
 function openUserModal(userId) {
   const user = userId ? getUser(userId) : null;
   document.getElementById('user-modal-title').textContent = user ? 'Edit User' : 'Add New User';
-  state.editingUserId = userId||null;
-  if(user) {
+  state.editingUserId = userId || null;
+  if (user) {
     document.getElementById('u-name').value = user.name;
     document.getElementById('u-email').value = user.email;
     document.getElementById('u-role').value = user.role;
@@ -1172,61 +1171,73 @@ function openUserModal(userId) {
   }
   openModal('modal-user');
 }
+
 function saveUser() {
   const name = document.getElementById('u-name').value.trim();
   const email = document.getElementById('u-email').value.trim();
-  if(!name||!email) { toast('Name and email required','error'); return; }
-  if(state.editingUserId) {
-    // Optionally: implement user update with API here
-    const u = getUser(state.editingUserId);
-    u.name = name; u.email = email; u.role = document.getElementById('u-role').value;
-    const p = document.getElementById('u-pass').value;
-    if(p) u.password = p;
-    toast('User updated');
-  } else {
-    fetch(typeof API_BASE !== 'undefined' ? API_BASE + '/users' : '/api/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name,
-        email,
-        password: document.getElementById('u-pass').value || 'password',
-        role: document.getElementById('u-role').value
-      })
-    })
+  const role = document.getElementById('u-role').value;
+  const password = document.getElementById('u-pass').value.trim();
+  if (!name || !email) { toast('Name and email required','error'); return; }
+
+  const payload = { name, email, role };
+  if (password) payload.password = password;
+
+  const isUpdate = Boolean(state.editingUserId);
+  const url = isUpdate ? `${API_BASE}/users/${state.editingUserId}` : `${API_BASE}/users`;
+  const method = isUpdate ? 'PUT' : 'POST';
+
+  fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(async res => {
+    if (!res.ok) {
+      const text = await res.text();
+      let message = text;
+      try {
+        const data = JSON.parse(text);
+        message = data.message || text;
+      } catch {
+        // ignore parse failure
+      }
+      throw new Error(message || 'Failed to save user');
+    }
+    return res.json();
+  })
+  .then(async user => {
+    await loadUsers();
+    toast(isUpdate ? 'User updated successfully' : 'User added successfully');
+    renderAdminUsers();
+    closeModal('modal-user');
+  })
+  .catch(err => {
+    toast(err.message || 'Failed to save user', 'error');
+    console.error(err);
+  });
+}
+
+function deleteUser(id) {
+  if (!confirm('Delete this user? Their tasks will be unassigned.')) return;
+
+  fetch(`${API_BASE}/users/${id}`, { method: 'DELETE' })
     .then(async res => {
       if (!res.ok) {
-        const text = await res.text();
-        let message = text;
-        try {
-          const data = JSON.parse(text);
-          message = data.message || text;
-        } catch {
-          // ignore parse failure
-        }
-        throw new Error(message || 'Failed to add user');
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.message || 'Failed to delete user');
       }
       return res.json();
     })
-    .then(user => {
-      toast('User added successfully');
-      // Optionally: reload users from backend here
+    .then(async () => {
+      db.tasks.forEach(t => { if (t.assignedTo === id) t.assignedTo = null; });
+      await loadUsers();
+      toast('User deleted');
       renderAdminUsers();
     })
     .catch(err => {
-      toast(err.message || 'Failed to add user', 'error');
+      toast(err.message || 'Failed to delete user', 'error');
       console.error(err);
     });
-  }
-  closeModal('modal-user');
-  renderAdminUsers();
-}
-function deleteUser(id) {
-  if(!confirm('Delete this user? Their tasks will be unassigned.')) return;
-  db.tasks.forEach(t=>{ if(t.assignedTo===id) t.assignedTo=null; });
-  db.users = db.users.filter(u=>u.id!==id);
-  toast('User deleted');
-  renderAdminUsers();
 }
 
 // ═══════════════════════ MANUAL TIME ═══════════════════════

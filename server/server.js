@@ -77,6 +77,28 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
+// Login
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required.' });
+  }
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user || user.password !== password) {
+      return res.status(401).json({ message: 'Invalid credentials.' });
+    }
+
+    const userObj = user.toObject();
+    delete userObj.password;
+    res.json(userObj);
+  } catch (error) {
+    console.error('Login error', error);
+    res.status(500).json({ message: 'Login failed.' });
+  }
+});
+
 // Update user
 app.put('/api/users/:id', async (req, res) => {
   try {
