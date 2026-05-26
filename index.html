@@ -564,7 +564,7 @@ let db = {
 
 async function loadUsers() {
   try {
-    const res = await fetch(`${API_BASE}/users`);
+    const res = await fetch(`${API_BASE}/apiusers`);
     if (!res.ok) throw new Error('Failed to load users');
    db.users = (await res.json()).map(u => ({ ...u, id: u._id }));    return db.users;
   } catch (error) {
@@ -1183,7 +1183,7 @@ function saveUser() {
   if (password) payload.password = password;
 
   const isUpdate = Boolean(state.editingUserId);
-  const url = isUpdate ? `${API_BASE}/users/${state.editingUserId}` : `${API_BASE}/users`;
+  const url = isUpdate ? `${API_BASE}/api/users/${state.editingUserId}` : `${API_BASE}/users`;
   const method = isUpdate ? 'PUT' : 'POST';
 
   fetch(url, {
@@ -1220,7 +1220,7 @@ function saveUser() {
 function deleteUser(id) {
   if (!confirm('Delete this user? Their tasks will be unassigned.')) return;
 
-  fetch(`${API_BASE}/users/${id}`, { method: 'DELETE' })
+  fetch(`${API_BASE}/api/users/${id}`, { method: 'DELETE' })
     .then(async res => {
       if (!res.ok) {
         const data = await res.json().catch(() => null);
