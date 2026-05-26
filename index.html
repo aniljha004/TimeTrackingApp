@@ -527,7 +527,7 @@
 //   && window.location.port === '5500'
 //   ? 'http://127.0.0.1:3000/api'
 //   : 'https://timeflow-app-production.up.railway.app/api';
-const API_BASE='https://timeflow-app-production.up.railway.app'
+const API_BASE='https://timeflow-app-production.up.railway.app/api'
 // const API_BASE = (
 //   window.location.hostname === '127.0.0.1' ||
 //   window.location.hostname === 'localhost' ||
@@ -564,7 +564,7 @@ let db = {
 
 async function loadUsers() {
   try {
-    const res = await fetch(`${API_BASE}/api/users`);
+    const res = await fetch(`${API_BASE}/users`);
     if (!res.ok) throw new Error('Failed to load users');
    db.users = (await res.json()).map(u => ({ ...u, id: u._id }));    return db.users;
   } catch (error) {
@@ -629,7 +629,7 @@ async function doLogin() {
   const errEl = document.getElementById('login-err');
   errEl.style.display = 'none';
   try {
-    const res = await fetch(`${API_BASE}/api/login`, {
+    const res = await fetch(`${API_BASE}/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password: pass })
@@ -1183,7 +1183,7 @@ function saveUser() {
   if (password) payload.password = password;
 
   const isUpdate = Boolean(state.editingUserId);
-  const url = isUpdate ? `${API_BASE}/api/users/${state.editingUserId}` : `${API_BASE}/users`;
+  const url = isUpdate ? `${API_BASE}/users/${state.editingUserId}` : `${API_BASE}/users`;
   const method = isUpdate ? 'PUT' : 'POST';
 
   fetch(url, {
@@ -1220,7 +1220,7 @@ function saveUser() {
 function deleteUser(id) {
   if (!confirm('Delete this user? Their tasks will be unassigned.')) return;
 
-  fetch(`${API_BASE}/api/users/${id}`, { method: 'DELETE' })
+  fetch(`${API_BASE}/users/${id}`, { method: 'DELETE' })
     .then(async res => {
       if (!res.ok) {
         const data = await res.json().catch(() => null);
