@@ -1,10 +1,8 @@
 // ═══════════════════════ API CONFIG ═══════════════════════
 const API_BASE = 'https://timeflow-app-production.up.railway.app/api';
 
-// API key — read from <meta name="x-api-key"> injected by the server,
-// or fall back to the VITE/window global for local dev.
-const _metaKey = document.querySelector('meta[name="x-api-key"]')?.content;
-const API_KEY  = _metaKey && _metaKey !== '__API_KEY__' ? _metaKey : '';
+// JWT token — set after login, sent as Authorization: Bearer <token>
+let AUTH_TOKEN = '';
 
 // ═══════════════════════ STATE ═══════════════════════
 let state = {
@@ -12,7 +10,7 @@ let state = {
   editingTaskId: null,
   editingUserId: null,
   manualTimeTaskId: null,
-  activeTimers: {},   // taskId -> { startedAt, accumulated }
+  activeTimers: {},
   timerInterval: null,
 };
 

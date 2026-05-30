@@ -23,6 +23,7 @@ async function doLogin() {
       return;
     }
     state.currentUser = { ...data, id: data._id || data.id };
+    AUTH_TOKEN = data.token; // store JWT for all subsequent requests
     await loadUsers();
     await loadTasks();
     errEl.style.display = 'none';
@@ -50,5 +51,6 @@ function doLogout() {
   if (state.timerInterval) clearInterval(state.timerInterval);
   state.timerInterval = null;
   state.currentUser   = null;
+  AUTH_TOKEN          = ''; // clear token on logout
   switchView('v-login');
 }

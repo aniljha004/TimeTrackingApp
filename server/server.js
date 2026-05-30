@@ -1,44 +1,44 @@
-const fs   = require('fs');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
 
-// Enable CORS for all origins (development only)
-app.use(cors({  
+app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '..')));
 
-// ==================== API KEY MIDDLEWARE ====================
-const API_KEY = process.env.API_KEY;
-console.log(API_KEY ? `✓ API key loaded (${API_KEY.length} chars)` : '⚠ API_KEY not set — key check disabled');
-
-// Serve static assets (css/, js/, etc.) but NOT index.html directly
-app.use(express.static(path.join(__dirname, '..'), { index: false }));
-
-// Helper — serve index.html with __API_KEY__ replaced at runtime
-function serveIndex(res) {
-  const filePath = path.resolve(__dirname, '../index.html');
-  let html = fs.readFileSync(filePath, 'utf8');
-  html = html.replace(/__API_KEY__/g, API_KEY || '');
-  res.setHeader('Content-Type', 'text/html');
-  res.send(html);
+// ==================== JWT AUTH MIDDLEWARE ====================
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('✗ JWT_SECRET environment variable is not set. Refusing to start.');
+  process.exit(1);
 }
 
-// Reject any /api request missing the correct key
+// All /api routes require a valid JWT except /api/login
 app.use('/api', (req, res, next) => {
-  if (!API_KEY) return next(); // key not configured — open in dev
-  const provided = req.headers['x-api-key'];
-  if (!provided || provided !== API_KEY) {
-    return res.status(401).json({ message: 'Unauthorized: invalid or missing API key.' });
+  if (req.path === '/login') return next(); // login is public
+
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.startsWith('Bearer ') && authHeader.slice(7);
+
+  if (!token) {
+    return res.status(401).json({ message: 'Unauthorized: no token provided.' });
   }
-  next();
+
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch (err) {
+    return res.status(401).json({ message: 'Unauthorized: invalid or expired token.' });
+  }
 });
 
 // MongoDB Connection with environment variable
@@ -103,7 +103,7 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
-// Login
+// Login — issues a JWT on success
 app.post('/api/login', async (req, res) => {
   const { email, password, role } = req.body;
   if (!email || !password) {
@@ -116,14 +116,21 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials.' });
     }
 
-    // If the client specified a role, verify it matches the stored role
     if (role && user.role !== role) {
       return res.status(403).json({ message: `This account does not have ${role} access.` });
     }
 
     const userObj = user.toObject();
     delete userObj.password;
-    res.json(userObj);
+
+    // Sign a token valid for 8 hours
+    const token = jwt.sign(
+      { id: user._id.toString(), role: user.role },
+      JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    res.json({ ...userObj, token });
   } catch (error) {
     console.error('Login error', error);
     res.status(500).json({ message: 'Login failed.' });
@@ -298,10 +305,10 @@ app.get('/api/users/:userId/stats', async (req, res) => {
 });
 
 // Serve index.html for root and all non-API routes (SPA fallback)
-app.get('/', (req, res) => serveIndex(res));
+app.get('/', (req, res) => res.sendFile(path.resolve(__dirname, '../index.html')));
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ message: 'Not found' });
-  serveIndex(res);
+  res.sendFile(path.resolve(__dirname, '../index.html'));
 });
 
 // ==================== START SERVER ====
