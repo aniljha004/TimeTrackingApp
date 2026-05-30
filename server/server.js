@@ -1,3 +1,4 @@
+const fs   = require('fs');
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -7,13 +8,37 @@ require('dotenv').config();
 const app = express();
 
 // Enable CORS for all origins (development only)
-app.use(cors({
+app.use(cors({  
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..')));
+// Serve static assets (css/, js/, etc.) but NOT index.html directly
+app.use(express.static(path.join(__dirname, '..'), { index: false }));
+
+// Helper — serve index.html with __API_KEY__ replaced
+function serveIndex(res) {
+  const filePath = path.resolve(__dirname, '../index.html');
+  let html = fs.readFileSync(filePath, 'utf8');
+  html = html.replace('__API_KEY__', API_KEY || '');
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+}
+
+// ==================== API KEY MIDDLEWARE ====================
+const API_KEY = process.env.API_KEY;
+
+app.use('/api', (req, res, next) => {
+  // Skip key check if API_KEY env var is not configured (local dev fallback)
+  if (!API_KEY) return next();
+
+  const provided = req.headers['x-api-key'];
+  if (!provided || provided !== API_KEY) {
+    return res.status(401).json({ message: 'Unauthorized: invalid or missing API key.' });
+  }
+  next();
+});
 
 // MongoDB Connection with environment variable
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://timetrackingApp:Super%401234%23@cluster0.tvcloza.mongodb.net/timetracking';
@@ -272,12 +297,10 @@ app.get('/api/users/:userId/stats', async (req, res) => {
 });
 
 // Serve index.html for root and all non-API routes (SPA fallback)
-app.get('/', (req, res) => {
-  res.sendFile(path.resolve(__dirname, '../index.html'));
-});
+app.get('/', (req, res) => serveIndex(res));
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ message: 'Not found' });
-  res.sendFile(path.resolve(__dirname, '../index.html'));
+  serveIndex(res);
 });
 
 // ==================== START SERVER ====
