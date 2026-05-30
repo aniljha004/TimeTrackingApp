@@ -79,7 +79,7 @@ app.post('/api/users', async (req, res) => {
 
 // Login
 app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, role } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: 'Email and password are required.' });
   }
@@ -88,6 +88,11 @@ app.post('/api/login', async (req, res) => {
     const user = await User.findOne({ email });
     if (!user || user.password !== password) {
       return res.status(401).json({ message: 'Invalid credentials.' });
+    }
+
+    // If the client specified a role, verify it matches the stored role
+    if (role && user.role !== role) {
+      return res.status(403).json({ message: `This account does not have ${role} access.` });
     }
 
     const userObj = user.toObject();
@@ -199,22 +204,26 @@ app.post('/api/tasks', async (req, res) => {
 // Update task
 app.put('/api/tasks/:id', async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id);
-    if (!task) return res.status(404).json({ message: 'Task not found' });
+    const updates = {};
+    if (req.body.title !== undefined)         updates.title = req.body.title;
+    if (req.body.description !== undefined)   updates.description = req.body.description;
+    if (req.body.status !== undefined)        updates.status = req.body.status;
+    if (req.body.priority !== undefined)      updates.priority = req.body.priority;
+    if (req.body.dueDate !== undefined)       updates.dueDate = req.body.dueDate;
+    if (req.body.timeSpent !== undefined)     updates.timeSpent = req.body.timeSpent;
+    if (req.body.estimatedTime !== undefined) updates.estimatedTime = req.body.estimatedTime;
+    updates.updatedAt = Date.now();
 
-    if (req.body.title) task.title = req.body.title;
-    if (req.body.description !== undefined) task.description = req.body.description;
-    if (req.body.status) task.status = req.body.status;
-    if (req.body.priority) task.priority = req.body.priority;
-    if (req.body.dueDate !== undefined) task.dueDate = req.body.dueDate;
-    if (req.body.timeSpent !== undefined) task.timeSpent = req.body.timeSpent;
-    if (req.body.estimatedTime !== undefined) task.estimatedTime = req.body.estimatedTime;
-    
-    task.updatedAt = Date.now();
-    const updatedTask = await task.save();
-    const populatedTask = await Task.findById(updatedTask._id).populate('userId', 'name email');
-    res.json(populatedTask);
+    const updatedTask = await Task.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true, runValidators: false }
+    ).populate('userId', 'name email');
+
+    if (!updatedTask) return res.status(404).json({ message: 'Task not found' });
+    res.json(updatedTask);
   } catch (error) {
+    console.error('Update task error:', error.message);
     res.status(400).json({ message: error.message });
   }
 });

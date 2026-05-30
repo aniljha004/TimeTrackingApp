@@ -80,13 +80,6 @@
   .btn-danger:hover { background:var(--red); color:#fff; }
   .btn-success { background:var(--green-bg); border:1px solid rgba(61,214,140,0.3); color:var(--green); }
   .btn-success:hover { background:var(--green); color:#0d0e14; }
-  .login-roles { display:flex; gap:8px; margin-bottom:28px; }
-  .role-pill {
-    flex:1; padding:8px 12px; border-radius:var(--radius); border:1px solid var(--border);
-    background:var(--bg3); color:var(--text2); text-align:center; cursor:pointer;
-    font-size:13px; transition: all 0.2s;
-  }
-  .role-pill.active { border-color:var(--accent); color:var(--accent); background:var(--accent-bg); }
   .err-msg { background:var(--red-bg); border:1px solid rgba(240,79,90,0.3); color:var(--red); border-radius:var(--radius); padding:10px 14px; font-size:13px; margin-bottom:16px; display:none; }
 
   /* APP LAYOUT */
@@ -137,8 +130,22 @@
   .badge-progress { background:var(--amber-bg); color:var(--amber); border:1px solid rgba(245,166,35,0.25); }
   .badge-done { background:var(--green-bg); color:var(--green); border:1px solid rgba(61,214,140,0.25); }
   .badge-paused { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(79,163,245,0.25); }
+  .badge-hold { background:var(--blue-bg); color:var(--blue); border:1px solid rgba(79,163,245,0.25); }
+  .badge-review { background:rgba(167,139,250,0.12); color:#a78bfa; border:1px solid rgba(167,139,250,0.3); }
   .badge-admin { background:var(--accent-bg); color:var(--accent); border:1px solid var(--accent-border); }
   .badge-user { background:var(--bg4); color:var(--text2); border:1px solid var(--border2); }
+
+  /* Status select inside task card */
+  .status-select {
+    width:100%; background:var(--bg3); border:1px solid var(--border2); border-radius:var(--radius);
+    padding:5px 8px; color:var(--text); font-family:'DM Sans',sans-serif; font-size:12px;
+    font-weight:500; outline:none; cursor:pointer; transition:border-color 0.2s;
+  }
+  .status-select:hover, .status-select:focus { border-color:var(--accent); }
+  .status-select.status-in-progress { border-color:rgba(245,166,35,0.5); color:var(--amber); }
+  .status-select.status-hold        { border-color:rgba(79,163,245,0.5); color:var(--blue); }
+  .status-select.status-review      { border-color:rgba(167,139,250,0.5); color:#a78bfa; }
+  .status-select.status-done        { border-color:rgba(61,214,140,0.5); color:var(--green); }
 
   /* TASK CARD */
   .task-card {
@@ -149,7 +156,8 @@
   .task-card:hover { border-color:var(--border2); }
   .task-card.in-progress { border-left:3px solid var(--amber); }
   .task-card.done { border-left:3px solid var(--green); opacity:0.7; }
-  .task-card.paused { border-left:3px solid var(--blue); }
+  .task-card.hold { border-left:3px solid var(--blue); }
+  .task-card.review { border-left:3px solid #a78bfa; }
   .task-info { flex:1; }
   .task-name { font-size:14px; font-weight:500; color:var(--text); margin-bottom:4px; }
   .task-desc { font-size:12px; color:var(--text3); margin-bottom:8px; }
@@ -249,6 +257,12 @@
   ::-webkit-scrollbar-thumb:hover { background:var(--text3); }
 
   .chip { display:inline-block; padding:2px 8px; border-radius:4px; font-size:11px; font-family:'DM Mono',monospace; background:var(--bg4); color:var(--text2); }
+  .time-chip {
+    display:inline-flex; align-items:center; padding:4px 10px; border-radius:6px; font-size:12px;
+    font-family:'DM Mono',monospace; background:var(--bg3); color:var(--text2);
+    border:1px solid var(--border); cursor:pointer; transition:all 0.15s; user-select:none;
+  }
+  .time-chip:hover { background:var(--accent-bg); color:var(--accent); border-color:var(--accent-border); }
 
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
   .pulse { animation: pulse 1.5s ease-in-out infinite; }
@@ -261,19 +275,14 @@
   <div class="login-box">
     <div class="login-logo">Time<span>Flow</span></div>
     <div class="login-sub">Track time. Ship work. Stay accountable.</div>
-    <div class="field-label" style="margin-bottom:8px;">Sign in as</div>
-    <div class="login-roles">
-      <div class="role-pill active" onclick="selectRole('user')" id="rp-user">👤 User</div>
-      <div class="role-pill" onclick="selectRole('admin')" id="rp-admin">🛡 Admin</div>
-    </div>
     <div class="err-msg" id="login-err">Invalid credentials. Please try again.</div>
     <div class="field">
       <div class="field-label">Email</div>
-      <input type="email" id="login-email" placeholder="you@company.com" value="alice@company.com">
+      <input type="email" id="login-email" placeholder="you@company.com">
     </div>
     <div class="field">
       <div class="field-label">Password</div>
-      <input type="password" id="login-pass" placeholder="••••••••" value="password">
+      <input type="password" id="login-pass" placeholder="••••••••">
     </div>
     <button class="btn btn-primary" onclick="doLogin()">Sign in →</button>
   </div>
@@ -322,7 +331,8 @@
           <option value="">All Status</option>
           <option value="todo">To Do</option>
           <option value="in-progress">In Progress</option>
-          <option value="paused">Paused</option>
+          <option value="hold">On Hold</option>
+          <option value="review">In Review</option>
           <option value="done">Done</option>
         </select>
         <select id="filter-priority" style="width:140px;" onchange="renderMyTasks()">
@@ -492,20 +502,55 @@
 
 <!-- Manual Time Modal -->
 <div class="modal-overlay" id="modal-time">
-  <div class="modal" style="width:380px;">
-    <div class="modal-title">Log Manual Time</div>
-    <div class="field">
-      <div class="field-label">Hours</div>
-      <input type="number" id="mt-hours" min="0" max="24" placeholder="0" step="0.5">
+  <div class="modal" style="width:420px;">
+    <div class="modal-title">Log Time</div>
+
+    <!-- Task name display -->
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:16px;">📋</span>
+      <span id="mt-task-name" style="font-size:13px;font-weight:500;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     </div>
+
     <div class="field">
-      <div class="field-label">Minutes</div>
-      <input type="number" id="mt-mins" min="0" max="59" placeholder="0">
+      <div class="field-label" style="margin-bottom:6px;">Time Spent</div>
+      <!-- Jira-style inline hr / min inputs -->
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div style="flex:1;position:relative;">
+          <input type="number" id="mt-hours" min="0" max="99" placeholder="0"
+            style="width:100%;padding-right:36px;text-align:center;font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px 36px 14px 14px;outline:none;transition:border-color 0.2s;"
+            oninput="updateTimePreview()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:var(--text3);pointer-events:none;">hr</span>
+        </div>
+        <div style="font-size:20px;color:var(--text3);font-weight:300;padding-bottom:2px;">:</div>
+        <div style="flex:1;position:relative;">
+          <input type="number" id="mt-mins" min="0" max="59" placeholder="0"
+            style="width:100%;text-align:center;font-family:'DM Mono',monospace;font-size:20px;font-weight:500;color:var(--text);background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px 36px 14px 14px;outline:none;transition:border-color 0.2s;"
+            oninput="updateTimePreview()" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:600;color:var(--text3);pointer-events:none;">min</span>
+        </div>
+      </div>
+
+      <!-- Quick-pick chips -->
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <span class="time-chip" onclick="setQuickTime(0,15)">15m</span>
+        <span class="time-chip" onclick="setQuickTime(0,30)">30m</span>
+        <span class="time-chip" onclick="setQuickTime(0,45)">45m</span>
+        <span class="time-chip" onclick="setQuickTime(1,0)">1h</span>
+        <span class="time-chip" onclick="setQuickTime(1,30)">1h 30m</span>
+        <span class="time-chip" onclick="setQuickTime(2,0)">2h</span>
+        <span class="time-chip" onclick="setQuickTime(4,0)">4h</span>
+        <span class="time-chip" onclick="setQuickTime(8,0)">8h</span>
+      </div>
+
+      <!-- Live preview -->
+      <div id="mt-preview" style="margin-top:12px;min-height:22px;font-size:13px;color:var(--text3);display:flex;align-items:center;gap:6px;"></div>
     </div>
+
     <div class="field">
-      <div class="field-label">Note (optional)</div>
-      <input type="text" id="mt-note" placeholder="What did you work on?">
+      <div class="field-label">Work Description <span style="color:var(--text3);font-weight:400;text-transform:none;letter-spacing:0;">(optional)</span></div>
+      <textarea id="mt-note" rows="2" placeholder="What did you work on? e.g. Fixed login bug, reviewed PR…"></textarea>
     </div>
+
     <div class="modal-footer">
       <button class="btn btn-ghost btn-sm" onclick="closeModal('modal-time')">Cancel</button>
       <button class="btn btn-primary btn-sm" onclick="saveManualTime()">Log Time</button>
@@ -545,33 +590,67 @@ let state = {
 
 let db = {
   users: [],
-  tasks: [
-    { id: 't1', name: 'Design Login Screen', desc: 'Create Figma mockups for the new login flow', assignedTo: 'u1', priority: 'high', status: 'in-progress', due: '2025-06-01', estimatedHours: 4, timeSpent: 5400, logs: [{date:'2025-05-09',duration:3600,note:'Initial design'},{date:'2025-05-10',duration:1800,note:'Revisions'}] },
-    { id: 't2', name: 'API Integration', desc: 'Connect frontend with authentication API endpoints', assignedTo: 'u1', priority: 'high', status: 'todo', due: '2025-06-05', estimatedHours: 6, timeSpent: 0, logs: [] },
-    { id: 't3', name: 'Write Unit Tests', desc: 'Cover core business logic with Jest tests', assignedTo: 'u2', priority: 'medium', status: 'in-progress', due: '2025-06-03', estimatedHours: 5, timeSpent: 7200, logs: [{date:'2025-05-08',duration:3600,note:'Auth tests'},{date:'2025-05-10',duration:3600,note:'Payment tests'}] },
-    { id: 't4', name: 'Database Schema', desc: 'Design and migrate PostgreSQL schema', assignedTo: 'u2', priority: 'high', status: 'done', due: '2025-05-30', estimatedHours: 3, timeSpent: 10800, logs: [{date:'2025-05-07',duration:10800,note:'Full day work'}] },
-    { id: 't5', name: 'UI Component Library', desc: 'Build reusable React component library', assignedTo: 'u3', priority: 'medium', status: 'paused', due: '2025-06-10', estimatedHours: 8, timeSpent: 3600, logs: [{date:'2025-05-09',duration:3600,note:'Button components'}] },
-    { id: 't6', name: 'Performance Audit', desc: 'Run Lighthouse audit and optimize score', assignedTo: 'u3', priority: 'low', status: 'todo', due: '2025-06-15', estimatedHours: 2, timeSpent: 0, logs: [] },
-    { id: 't7', name: 'Deploy to Staging', desc: 'Configure CI/CD and deploy to AWS staging', assignedTo: 'u1', priority: 'medium', status: 'todo', due: '2025-06-08', estimatedHours: 3, timeSpent: 900, logs: [{date:'2025-05-10',duration:900,note:'Config setup'}] },
-  ],
-  activity: [
-    { userId: 'u1', taskId: 't1', action: 'started timer', time: '10:42 AM' },
-    { userId: 'u2', taskId: 't3', action: 'logged 1h', time: '9:15 AM' },
-    { userId: 'u3', taskId: 't5', action: 'paused task', time: '8:30 AM' },
-    { userId: 'u2', taskId: 't4', action: 'marked done', time: 'Yesterday' },
-  ],
+  tasks: [],
+  activity: [],
 };
 
 async function loadUsers() {
   try {
     const res = await fetch(`${API_BASE}/users`);
     if (!res.ok) throw new Error('Failed to load users');
-   db.users = (await res.json()).map(u => ({ ...u, id: u._id }));    return db.users;
+    db.users = (await res.json()).map(u => ({
+      ...u,
+      id: u._id,
+      color: u.color || stringToColor(u.name || u.email || u._id),
+    }));
+    return db.users;
   } catch (error) {
     console.error('loadUsers failed', error);
     toast('Unable to load users from server', 'error');
     return [];
   }
+}
+
+async function loadTasks() {
+  try {
+    const res = await fetch(`${API_BASE}/tasks`);
+    if (!res.ok) throw new Error('Failed to load tasks');
+    const raw = await res.json();
+    db.tasks = raw.map(t => ({
+      ...t,
+      id: t._id,
+      // normalise field names to match frontend expectations
+      name: t.title || t.name || 'Untitled',
+      desc: t.description || t.desc || '',
+      assignedTo: t.userId?._id || t.userId || t.assignedTo || null,
+      due: t.dueDate ? t.dueDate.split('T')[0] : (t.due || ''),
+      estimatedHours: t.estimatedTime ? t.estimatedTime / 3600 : (t.estimatedHours || 0),
+      timeSpent: t.timeSpent || 0,
+      logs: t.logs || [],
+      status: normaliseStatus(t.status),
+      priority: t.priority || 'medium',
+    }));
+    return db.tasks;
+  } catch (error) {
+    console.error('loadTasks failed', error);
+    toast('Unable to load tasks from server', 'error');
+    return [];
+  }
+}
+
+// Generate a consistent colour from a string
+function stringToColor(str) {
+  const palette = ['#4fa3f5','#7c6af7','#3dd68c','#f5a623','#f04f5a','#a78bfa','#34d399','#fb923c'];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  return palette[Math.abs(hash) % palette.length];
+}
+// Normalise legacy/DB status values to frontend values
+function normaliseStatus(s) {
+  if (!s) return 'todo';
+  if (s === 'completed') return 'done';
+  if (s === 'paused') return 'hold';
+  return s;
 }
 
 // ═══════════════════════ UTILS ═══════════════════════
@@ -615,19 +694,16 @@ function addActivity(userId, taskId, action) {
 }
 
 // ═══════════════════════ AUTH ═══════════════════════
-let selectedRole = 'user';
-function selectRole(r) {
-  selectedRole = r;
-  document.getElementById('rp-user').classList.toggle('active', r==='user');
-  document.getElementById('rp-admin').classList.toggle('active', r==='admin');
-  document.getElementById('login-email').value = r==='admin' ? 'admin@company.com' : 'alice@company.com';
-  document.getElementById('login-pass').value = r==='admin' ? 'admin' : 'password';
-}
 async function doLogin() {
   const email = document.getElementById('login-email').value.trim();
   const pass = document.getElementById('login-pass').value.trim();
   const errEl = document.getElementById('login-err');
   errEl.style.display = 'none';
+  if (!email || !pass) {
+    errEl.textContent = 'Please enter your email and password.';
+    errEl.style.display = 'block';
+    return;
+  }
   try {
     const res = await fetch(`${API_BASE}/login`, {
       method: 'POST',
@@ -640,8 +716,9 @@ async function doLogin() {
       errEl.style.display = 'block';
       return;
     }
-    state.currentUser = data;
+    state.currentUser = { ...data, id: data._id || data.id };
     await loadUsers();
+    await loadTasks();
     errEl.style.display = 'none';
     switchView('v-app');
     setupApp();
@@ -658,7 +735,7 @@ function doLogout() {
     if(task) {
       const elapsed = Math.floor((Date.now()-state.activeTimers[tid].startedAt)/1000) + (state.activeTimers[tid].accumulated||0);
       task.timeSpent += elapsed - (state.activeTimers[tid].accumulated||0);
-      task.status = 'paused';
+      task.status = 'hold';
     }
   });
   state.activeTimers = {};
@@ -690,25 +767,27 @@ function setupApp() {
       <button class="nav-btn" onclick="switchPage('admin-tasks', this)">Tasks & Users</button>
       <button class="nav-btn" onclick="switchPage('admin-reports', this)">Reports</button>
     `;
-    switchPage('admin-dash', nav.querySelector('.nav-btn'));
+    renderPage('admin-dash');
   } else {
     nav.innerHTML = `
       <button class="nav-btn active" onclick="switchPage('dashboard', this)">Dashboard</button>
       <button class="nav-btn" onclick="switchPage('mytasks', this)">My Tasks</button>
       <button class="nav-btn" onclick="switchPage('timelog', this)">Time Log</button>
     `;
-    switchPage('dashboard', nav.querySelector('.nav-btn'));
+    renderPage('dashboard');
   }
 
   // global timer tick
   if(state.timerInterval) clearInterval(state.timerInterval);
   state.timerInterval = setInterval(tickTimers, 1000);
 }
-function switchPage(page, btn) {
+async function switchPage(page, btn) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('p-'+page).classList.add('active');
   if(btn) btn.classList.add('active');
+  // Refresh data from server on every tab click
+  await Promise.all([loadUsers(), loadTasks()]);
   renderPage(page);
 }
 function renderPage(p) {
@@ -721,17 +800,31 @@ function renderPage(p) {
 }
 
 // ═══════════════════════ TIMERS ═══════════════════════
-function startTimer(taskId) {
+async function startTimer(taskId) {
   const task = getTask(taskId);
   if(!task) return;
   if(state.activeTimers[taskId]) return; // already running
   state.activeTimers[taskId] = { startedAt: Date.now(), accumulated: 0 };
   task.status = 'in-progress';
   addActivity(state.currentUser.id, taskId, 'started timer');
-  toast('Timer started for "' + task.name + '"');
+  try {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'in-progress' })
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => null);
+      throw new Error(d?.message || `Server error ${res.status}`);
+    }
+    toast('Timer started for "' + task.name + '"');
+  } catch(err) {
+    console.error('Failed to update task status', err);
+    toast(`Failed to start timer: ${err.message}`, 'error');
+  }
   renderCurrentPage();
 }
-function pauseTimer(taskId) {
+async function pauseTimer(taskId) {
   const task = getTask(taskId);
   const timer = state.activeTimers[taskId];
   if(!timer) return;
@@ -739,22 +832,89 @@ function pauseTimer(taskId) {
   task.timeSpent += elapsed;
   task.logs.push({ date: today(), duration: elapsed, note: 'Timer session' });
   delete state.activeTimers[taskId];
-  task.status = 'paused';
+  task.status = 'hold';
   addActivity(state.currentUser.id, taskId, `logged ${fmtShort(elapsed)}`);
-  toast('Timer paused — ' + fmtShort(elapsed) + ' logged');
+  try {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timeSpent: task.timeSpent, status: 'hold' })
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => null);
+      throw new Error(d?.message || `Server error ${res.status}`);
+    }
+    toast('Timer paused — ' + fmtShort(elapsed) + ' logged');
+  } catch(err) {
+    console.error('Failed to save timer', err);
+    toast(`Failed to save time: ${err.message}`, 'error');
+  }
   renderCurrentPage();
 }
-function markDone(taskId) {
+async function markDone(taskId) {
   const task = getTask(taskId);
-  if(state.activeTimers[taskId]) pauseTimer(taskId);
+  if(state.activeTimers[taskId]) await pauseTimer(taskId);
   task.status = 'done';
   addActivity(state.currentUser.id, taskId, 'marked done');
-  toast('Task marked as complete! 🎉');
+  try {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'done', timeSpent: task.timeSpent })
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => null);
+      throw new Error(d?.message || `Server error ${res.status}`);
+    }
+    toast('Task marked as complete! 🎉');
+  } catch(err) {
+    console.error('Failed to mark done', err);
+    toast(`Failed: ${err.message}`, 'error');
+  }
   renderCurrentPage();
+}
+async function setTaskStatus(taskId, newStatus) {
+  const task = getTask(taskId);
+  if(!task) return;
+  // If timer is running and we're moving away from in-progress, stop it first (without re-rendering)
+  if(state.activeTimers[taskId] && newStatus !== 'in-progress') {
+    const timer = state.activeTimers[taskId];
+    const elapsed = Math.floor((Date.now() - timer.startedAt) / 1000);
+    task.timeSpent += elapsed;
+    task.logs.push({ date: today(), duration: elapsed, note: 'Timer session' });
+    delete state.activeTimers[taskId];
+    addActivity(state.currentUser.id, taskId, `logged ${fmtShort(elapsed)}`);
+  }
+  task.status = newStatus;
+  addActivity(state.currentUser.id, taskId, `set to ${statusLabel(newStatus)}`);
+  try {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: newStatus, timeSpent: task.timeSpent })
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => null);
+      throw new Error(d?.message || `Server error ${res.status}`);
+    }
+    toast(`Status updated to "${statusLabel(newStatus)}"`);
+  } catch(err) {
+    console.error('Failed to update status', err);
+    toast(`Failed to update status: ${err.message}`, 'error');
+  }
+  renderCurrentPage();
+}
+function statusLabel(s) {
+  return { 'todo':'To Do','in-progress':'In Progress','hold':'On Hold','review':'In Review','done':'Done' }[s] || s;
 }
 function markTodo(taskId) {
   const task = getTask(taskId);
   task.status = 'todo';
+  fetch(`${API_BASE}/tasks/${taskId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'todo' })
+  }).catch(err => console.error('Failed to reopen task', err));
   renderCurrentPage();
 }
 function tickTimers() {
@@ -842,7 +1002,7 @@ function renderMiniTaskCard(t) {
   const running = !!state.activeTimers[t.id];
   const totalSec = t.timeSpent + (running ? liveTime(t.id) : 0);
   return `
-    <div class="task-card ${t.status==='in-progress'?'in-progress':t.status==='paused'?'paused':''}">
+    <div class="task-card ${t.status==='in-progress'?'in-progress':t.status==='hold'?'hold':t.status==='review'?'review':''}">
       <div class="task-info">
         <div class="task-name">${t.name}</div>
         <div class="task-meta">
@@ -852,11 +1012,9 @@ function renderMiniTaskCard(t) {
       </div>
       <div class="task-time ${running?'pulse text-amber':''}" data-timer="${running?t.id:''}">${fmt(totalSec)}</div>
       <div class="task-actions">
-        ${running
-          ? `<button class="btn btn-ghost btn-sm" onclick="pauseTimer('${t.id}')">⏸</button>`
-          : t.status!=='done'
-            ? `<button class="btn btn-success btn-sm" onclick="startTimer('${t.id}')">▶</button>`
-            : ''
+        ${t.status==='done' ? '' : running
+          ? `<button class="btn btn-ghost btn-sm" onclick="pauseTimer('${t.id}')" title="Pause">⏸</button>`
+          : `<button class="btn btn-success btn-sm" onclick="startTimer('${t.id}')" title="Start">▶</button>`
         }
       </div>
     </div>
@@ -881,7 +1039,7 @@ function renderMyTasks() {
     const estSec = (t.estimatedHours||0)*3600;
     const pct = estSec ? Math.min(100, Math.round(totalSec/estSec*100)) : 0;
     return `
-    <div class="task-card ${t.status==='in-progress'?'in-progress':t.status==='done'?'done':t.status==='paused'?'paused':''}">
+    <div class="task-card ${t.status==='in-progress'?'in-progress':t.status==='done'?'done':t.status==='hold'?'hold':t.status==='review'?'review':''}">
       <div class="task-info">
         <div class="task-name">${t.name}</div>
         <div class="task-desc">${t.desc}</div>
@@ -897,13 +1055,25 @@ function renderMyTasks() {
         <div class="task-time ${running?'pulse':'text-muted'}" style="${running?'color:var(--amber)':''}" data-timer="${running?t.id:''}">${fmt(totalSec)}</div>
         <div class="text-sm text-muted mono" style="margin-top:2px">${estSec?pct+'% of '+t.estimatedHours+'h':''}</div>
       </div>
-      <div class="task-actions" style="flex-direction:column;gap:6px">
-        ${t.status==='done' ? `<button class="btn btn-ghost btn-sm" onclick="markTodo('${t.id}')">↩ Reopen</button>` : running
-          ? `<button class="btn btn-ghost btn-sm" onclick="pauseTimer('${t.id}')">⏸ Pause</button>
-             <button class="btn btn-success btn-sm" onclick="markDone('${t.id}')">✓ Done</button>`
-          : `<button class="btn btn-success btn-sm" onclick="startTimer('${t.id}')">▶ Start</button>
-             <button class="btn btn-ghost btn-sm" onclick="openManualTime('${t.id}')">+ Log</button>
-             ${t.status!=='done'?`<button class="btn btn-success btn-sm" onclick="markDone('${t.id}')">✓ Done</button>`:''}`
+      <div class="task-actions" style="flex-direction:column;gap:6px;min-width:130px;">
+        ${t.status==='done'
+          ? `<span class="text-sm text-muted" style="padding:4px 0">Completed ✓</span>`
+          : `
+            <select class="status-select status-${t.status}" onchange="setTaskStatus('${t.id}', this.value)" title="Change status">
+              <option value="todo"     ${t.status==='todo'?'selected':''}>📋 To Do</option>
+              <option value="in-progress" ${t.status==='in-progress'?'selected':''}>⚡ In Progress</option>
+              <option value="hold"     ${t.status==='hold'?'selected':''}>⏸ On Hold</option>
+              <option value="review"   ${t.status==='review'?'selected':''}>🔍 In Review</option>
+              <option value="done"     ${t.status==='done'?'selected':''}>✅ Done</option>
+            </select>
+            <div style="display:flex;gap:6px;">
+              ${running
+                ? `<button class="btn btn-ghost btn-sm" onclick="pauseTimer('${t.id}')" title="Pause timer">⏸</button>`
+                : `<button class="btn btn-success btn-sm" onclick="startTimer('${t.id}')" title="Start timer">▶</button>`
+              }
+              <button class="btn btn-ghost btn-sm" onclick="openManualTime('${t.id}')" title="Log time">+ Log</button>
+            </div>
+          `
         }
       </div>
     </div>`;
@@ -975,9 +1145,9 @@ function renderAdminDash() {
   }).join('');
 
   // Status chart
-  const statuses = ['todo','in-progress','paused','done'];
-  const labels = {'todo':'To Do','in-progress':'In Progress','paused':'Paused','done':'Done'};
-  const colors = {'todo':'var(--text3)','in-progress':'var(--amber)','paused':'var(--blue)','done':'var(--green)'};
+  const statuses = ['todo','in-progress','hold','review','done'];
+  const labels = {'todo':'To Do','in-progress':'In Progress','hold':'On Hold','review':'In Review','done':'Done'};
+  const colors = {'todo':'var(--text3)','in-progress':'var(--amber)','hold':'var(--blue)','review':'#a78bfa','done':'var(--green)'};
   const counts = Object.fromEntries(statuses.map(s=>[s,tasks.filter(t=>t.status===s).length]));
   const max = Math.max(...Object.values(counts),1);
   document.getElementById('admin-status-chart').innerHTML = statuses.map(s=>`
@@ -1130,29 +1300,62 @@ function openTaskModal(taskId) {
 function saveTask() {
   const name = document.getElementById('t-name').value.trim();
   if(!name) { toast('Task name is required','error'); return; }
+  const assignedTo = document.getElementById('t-assign').value;
   const data = {
-    name,
-    desc: document.getElementById('t-desc').value.trim(),
-    assignedTo: document.getElementById('t-assign').value,
+    title: name,
+    description: document.getElementById('t-desc').value.trim(),
+    userId: assignedTo,
     priority: document.getElementById('t-priority').value,
-    due: document.getElementById('t-due').value,
-    estimatedHours: parseFloat(document.getElementById('t-est').value)||0,
+    dueDate: document.getElementById('t-due').value || null,
+    estimatedTime: (parseFloat(document.getElementById('t-est').value)||0) * 3600,
   };
-  if(state.editingTaskId) {
-    Object.assign(getTask(state.editingTaskId), data);
-    toast('Task updated successfully');
-  } else {
-    db.tasks.push({ id:genId(), status:'todo', timeSpent:0, logs:[], ...data });
-    toast('Task created and assigned!');
-  }
-  closeModal('modal-task');
-  renderAdminTasks();
+
+  const isUpdate = Boolean(state.editingTaskId);
+  const url = isUpdate ? `${API_BASE}/tasks/${state.editingTaskId}` : `${API_BASE}/tasks`;
+  const method = isUpdate ? 'PUT' : 'POST';
+
+  fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  })
+  .then(async res => {
+    if (!res.ok) {
+      const d = await res.json().catch(() => null);
+      throw new Error(d?.message || 'Failed to save task');
+    }
+    return res.json();
+  })
+  .then(async () => {
+    await loadTasks();
+    toast(isUpdate ? 'Task updated successfully' : 'Task created and assigned!');
+    closeModal('modal-task');
+    renderAdminTasks();
+  })
+  .catch(err => {
+    toast(err.message || 'Failed to save task', 'error');
+    console.error(err);
+  });
 }
 function deleteTask(id) {
   if(!confirm('Delete this task?')) return;
-  db.tasks = db.tasks.filter(t=>t.id!==id);
-  toast('Task deleted');
-  renderAdminTasks();
+  fetch(`${API_BASE}/tasks/${id}`, { method: 'DELETE' })
+    .then(async res => {
+      if (!res.ok) {
+        const d = await res.json().catch(() => null);
+        throw new Error(d?.message || 'Failed to delete task');
+      }
+      return res.json();
+    })
+    .then(async () => {
+      await loadTasks();
+      toast('Task deleted');
+      renderAdminTasks();
+    })
+    .catch(err => {
+      toast(err.message || 'Failed to delete task', 'error');
+      console.error(err);
+    });
 }
 function openUserModal(userId) {
   const user = userId ? getUser(userId) : null;
@@ -1246,17 +1449,43 @@ function openManualTime(taskId) {
   document.getElementById('mt-hours').value = '';
   document.getElementById('mt-mins').value = '';
   document.getElementById('mt-note').value = '';
+  document.getElementById('mt-preview').innerHTML = '';
+  // Show task name in modal
+  const task = getTask(taskId);
+  document.getElementById('mt-task-name').textContent = task ? task.name : '';
   openModal('modal-time');
 }
+function setQuickTime(h, m) {
+  document.getElementById('mt-hours').value = h || '';
+  document.getElementById('mt-mins').value = m || '';
+  updateTimePreview();
+}
+function updateTimePreview() {
+  const h = parseInt(document.getElementById('mt-hours').value) || 0;
+  const m = parseInt(document.getElementById('mt-mins').value) || 0;
+  const prev = document.getElementById('mt-preview');
+  if (h === 0 && m === 0) { prev.innerHTML = ''; return; }
+  const parts = [];
+  if (h > 0) parts.push(`${h}h`);
+  if (m > 0) parts.push(`${m}m`);
+  const label = parts.join(' ');
+  prev.innerHTML = `<span style="color:var(--accent);font-family:'DM Mono',monospace;font-weight:500;font-size:14px;">⏱ ${label}</span><span style="color:var(--text3)"> will be logged</span>`;
+}
 function saveManualTime() {
-  const h = parseFloat(document.getElementById('mt-hours').value)||0;
-  const m = parseFloat(document.getElementById('mt-mins').value)||0;
-  const sec = Math.round((h*3600)+(m*60));
-  if(sec<=0) { toast('Please enter a valid duration','error'); return; }
+  const h = parseInt(document.getElementById('mt-hours').value) || 0;
+  const m = parseInt(document.getElementById('mt-mins').value) || 0;
+  const sec = (h * 3600) + (m * 60);
+  if(sec <= 0) { toast('Please enter a valid duration', 'error'); return; }
   const task = getTask(state.manualTimeTaskId);
   task.timeSpent += sec;
-  task.logs.push({ date: today(), duration: sec, note: document.getElementById('mt-note').value||'Manual entry' });
+  task.logs.push({ date: today(), duration: sec, note: document.getElementById('mt-note').value || 'Manual entry' });
   addActivity(state.currentUser.id, task.id, `manually logged ${fmtShort(sec)}`);
+  // Persist to API
+  fetch(`${API_BASE}/tasks/${task.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ timeSpent: task.timeSpent })
+  }).catch(err => console.error('Failed to save manual time', err));
   toast(`Logged ${fmtShort(sec)} for "${task.name}"`);
   closeModal('modal-time');
   renderCurrentPage();
@@ -1271,9 +1500,15 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 
 // ═══════════════════════ BADGE HELPERS ═══════════════════════
 function statusBadge(s) {
-  const map = { 'todo':'badge-todo','in-progress':'badge-progress','done':'badge-done','paused':'badge-paused' };
-  const labels = { 'todo':'To Do','in-progress':'In Progress','done':'Done','paused':'Paused' };
-  const dots = { 'todo':'⬜','in-progress':'🟡','done':'🟢','paused':'🔵' };
+  const map = {
+    'todo':'badge-todo', 'in-progress':'badge-progress',
+    'hold':'badge-hold', 'review':'badge-review', 'done':'badge-done'
+  };
+  const labels = {
+    'todo':'To Do', 'in-progress':'In Progress',
+    'hold':'On Hold', 'review':'In Review', 'done':'Done'
+  };
+  const dots = { 'todo':'⬜','in-progress':'🟡','hold':'🔵','review':'🟣','done':'🟢' };
   return `<span class="badge ${map[s]||'badge-todo'}">${dots[s]||'⬜'} ${labels[s]||s}</span>`;
 }
 function priorityColor(p) {
