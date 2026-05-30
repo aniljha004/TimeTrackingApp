@@ -11,28 +11,29 @@ const app = express();
 app.use(cors({  
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
 }));
 app.use(express.json());
+
+// ==================== API KEY MIDDLEWARE ====================
+const API_KEY = process.env.API_KEY;
+console.log(API_KEY ? `✓ API key loaded (${API_KEY.length} chars)` : '⚠ API_KEY not set — key check disabled');
+
 // Serve static assets (css/, js/, etc.) but NOT index.html directly
 app.use(express.static(path.join(__dirname, '..'), { index: false }));
 
-// Helper — serve index.html with __API_KEY__ replaced
+// Helper — serve index.html with __API_KEY__ replaced at runtime
 function serveIndex(res) {
   const filePath = path.resolve(__dirname, '../index.html');
   let html = fs.readFileSync(filePath, 'utf8');
-  html = html.replace('__API_KEY__', API_KEY || '');
+  html = html.replace(/__API_KEY__/g, API_KEY || '');
   res.setHeader('Content-Type', 'text/html');
   res.send(html);
 }
 
-// ==================== API KEY MIDDLEWARE ====================
-const API_KEY = process.env.API_KEY;
-
+// Reject any /api request missing the correct key
 app.use('/api', (req, res, next) => {
-  // Skip key check if API_KEY env var is not configured (local dev fallback)
-  if (!API_KEY) return next();
-
+  if (!API_KEY) return next(); // key not configured — open in dev
   const provided = req.headers['x-api-key'];
   if (!provided || provided !== API_KEY) {
     return res.status(401).json({ message: 'Unauthorized: invalid or missing API key.' });
